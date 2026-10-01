@@ -1,22 +1,26 @@
 import React, { useState } from 'react';
-import { LogOut, Shield, Database, Keyboard, ChevronDown, Check, Coins } from 'lucide-react';
+import { LogOut, Shield, Database, Keyboard, ChevronDown, Check, Coins, User } from 'lucide-react';
 import { PWAInstallButton } from './PWAInstallButton';
-import { CashShift } from '../types';
+import { CashShift, UserAccount } from '../types';
 
 interface HeaderProps {
   currentRole: string;
+  currentUser?: UserAccount;
   activeShift: CashShift | null;
   onLogout: () => void;
   onOpenDataSettings: () => void;
   onOpenCashModal: () => void;
+  onOpenProfile?: () => void;
 }
 
 export const Header: React.FC<HeaderProps> = ({
   currentRole,
+  currentUser,
   activeShift,
   onLogout,
   onOpenDataSettings,
   onOpenCashModal,
+  onOpenProfile,
 }) => {
   const [showShortcuts, setShowShortcuts] = useState(false);
 
@@ -107,23 +111,42 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Right side actions */}
       <div className="flex items-center gap-2 sm:gap-3">
         {/* Supabase & Sample Data Settings Button */}
-        <button
-          onClick={onOpenDataSettings}
-          className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-medium text-gray-100 transition cursor-pointer"
-          title="Gestión de Datos y Supabase"
-        >
-          <Database className="w-3.5 h-3.5 text-[#F3C16C]" />
-          <span className="hidden sm:inline">Datos</span>
-        </button>
+        {currentRole === 'Admin' && (
+          <button
+            onClick={onOpenDataSettings}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-medium text-gray-100 transition cursor-pointer"
+            title="Gestión de Datos y Supabase"
+          >
+            <Database className="w-3.5 h-3.5 text-[#F3C16C]" />
+            <span className="hidden sm:inline">Datos</span>
+          </button>
+        )}
 
         {/* PWA Fast Install Button */}
         <PWAInstallButton />
 
-        {/* Active Role Identification */}
-        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-[#163248] border border-white/15 text-xs">
-          <Shield className="w-3.5 h-3.5 text-[#9CC55B]" />
-          <span className="font-bold text-white tracking-wide">{currentRole}</span>
-        </div>
+        {/* Active Role & Profile link */}
+        {currentRole === 'Admin' && onOpenProfile ? (
+          <button
+            onClick={onOpenProfile}
+            className="flex items-center gap-2 px-2.5 py-1 rounded-lg bg-[#163248] hover:bg-[#12283a] border border-white/15 text-xs transition cursor-pointer"
+            title="Ver y editar mi perfil de Administrador"
+          >
+            <div className="w-5 h-5 rounded-full overflow-hidden bg-white/20 flex items-center justify-center shrink-0">
+              {currentUser?.avatarUrl ? (
+                <img src={currentUser.avatarUrl} alt="Perfil" className="w-full h-full object-cover" />
+              ) : (
+                <User className="w-3.5 h-3.5 text-[#9CC55B]" />
+              )}
+            </div>
+            <span className="font-bold text-white tracking-wide">{currentRole}</span>
+          </button>
+        ) : (
+          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-emerald-950/70 border border-emerald-500/30 text-xs">
+            <Shield className="w-3.5 h-3.5 text-[#9CC55B]" />
+            <span className="font-bold text-emerald-200 tracking-wide">{currentRole}</span>
+          </div>
+        )}
 
         {/* Unified Logout Button */}
         <button

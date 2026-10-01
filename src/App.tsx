@@ -4,8 +4,10 @@ import {
   ServiceItem,
   Sale,
   CashShift,
+  CashMovement,
   Purchase,
   StockAdjustment,
+  UserAccount,
   ActiveModule,
 } from './types';
 import {
@@ -16,12 +18,31 @@ import {
   saveSales,
   getCashShifts,
   saveCashShifts,
-  getActiveShift,
   getPurchases,
   savePurchases,
   getAdjustments,
   saveAdjustments,
+  getUsers,
+  saveUsers,
+  getCurrentUser,
+  saveCurrentUser,
+  getAuthSession,
+  saveAuthSession,
+  clearAuthSession,
+  AuthSession,
 } from './services/storage';
+import {
+  syncProductToSupabase,
+  deleteProductFromSupabase,
+  deleteMultipleProductsFromSupabase,
+  syncSaleToSupabase,
+  syncCashShiftToSupabase,
+  syncPurchaseToSupabase,
+  deleteMultiplePurchasesFromSupabase,
+  syncUserToSupabase,
+  deleteUserFromSupabase,
+  deleteMultipleUsersFromSupabase,
+} from './services/supabaseClient';
 import { RoleSelector } from './components/RoleSelector';
 import { Header } from './components/Header';
 import { Sidebar } from './components/Sidebar';
@@ -31,13 +52,19 @@ import { InventoryModule } from './components/inventory/InventoryModule';
 import { PurchasesModule } from './components/purchases/PurchasesModule';
 import { CashShiftModule } from './components/cash/CashShiftModule';
 import { ReportsModule } from './components/reports/ReportsModule';
+import { EmployeesModule } from './components/employees/EmployeesModule';
+import { ProfileModule } from './components/profile/ProfileModule';
 import { DataManagementModal } from './components/settings/DataManagementModal';
 import { OfflineIndicator } from './components/OfflineIndicator';
 
 export default function App() {
-  // Current active role (null = role selector home screen)
+  // Session state: Persists permanently across browser refreshes
+  const [activeSession, setActiveSession] = useState<AuthSession | null>(() => getAuthSession());
+
+  // Current active role ('Admin' | 'Cajero' | null)
   const [currentRole, setCurrentRole] = useState<string | null>(() => {
-    return localStorage.getItem('papeleria_active_role') || null;
+    const session = getAuthSession();
+    return session?.user?.role || localStorage.getItem('papeleria_active_role') || null;
   });
 
   // Active module
@@ -51,6 +78,11 @@ export default function App() {
   const [shifts, setShifts] = useState<CashShift[]>([]);
   const [purchases, setPurchases] = useState<Purchase[]>([]);
   const [adjustments, setAdjustments] = useState<StockAdjustment[]>([]);
+  const [users, setUsers] = useState<UserAccount[]>([]);
+  const [currentUser, setCurrentUser] = useState<UserAccount>(() => {
+    const session = getAuthSession();
+    return session?.user || getCurrentUser();
+  });
 
   // Modals
   const [isDataModalOpen, setIsDataModalOpen] = useState(false);
@@ -63,6 +95,17 @@ export default function App() {
     setShifts(getCashShifts());
     setPurchases(getPurchases());
     setAdjustments(getAdjustments());
+    const allUsers = getUsers();
+    setUsers(allUsers);
+
+    const session = getAuthSession();
+    if (session?.user) {
+      setCurrentUser(session.user);
+      setCurrentRole(session.user.role);
+    } else {
+      const active = getCurrentUser();
+      setCurrentUser(active);
+    }
   };
 
   useEffect(() => {
@@ -79,16 +122,24 @@ export default function App() {
     };
   }, []);
 
-  // Handle role selection
-  const handleSelectRole = (role: string) => {
-    setCurrentRole(role);
-    localStorage.setItem('papeleria_active_role', role);
+  // Handle successful credential login
+  const handleLoginSuccess = (user: UserAccount) => {
+    saveAuthSession(user);
+    setActiveSession({
+      user,
+      token: `token-${Date.now()}`,
+      loginAt: new Date().toISOString(),
+    });
+    setCurrentUser(user);
+    setCurrentRole(user.role);
+    setActiveModule('pos');
   };
 
-  // Handle logout
+  // Handle explicit logout
   const handleLogout = () => {
+    clearAuthSession();
+    setActiveSession(null);
     setCurrentRole(null);
-    localStorage.removeItem('papeleria_active_role');
   };
 
   // Active shift
@@ -100,6 +151,9 @@ export default function App() {
     setSales(updatedSales);
     saveSales(updatedSales);
 
+    // Sync to Supabase in background
+    syncSaleToSupabase(newSale).catch((e) => console.warn('Supabase sale sync error', e));
+
     // Update active shift sales totals
     if (activeShift) {
       const updatedShifts = shifts.map((s) => {
@@ -110,12 +164,17 @@ export default function App() {
           const newSalesCard = s.salesCard + addCard;
           const expected = s.initialAmount + newSalesCash + s.cashIn - s.cashOut;
 
-          return {
+          const updatedShiftObj: CashShift = {
             ...s,
             salesCash: Number(newSalesCash.toFixed(2)),
             salesCard: Number(newSalesCard.toFixed(2)),
             expectedCash: Number(expected.toFixed(2)),
           };
+
+          // Sync shift to Supabase
+          syncCashShiftToSupabase(updatedShiftObj).catch((e) => console.warn('Supabase shift sync error', e));
+
+          return updatedShiftObj;
         }
         return s;
       });
@@ -126,20 +185,27 @@ export default function App() {
 
   // POS: Deduct product stock
   const handleUpdateProductStock = (productId: string, quantityDeducted: number) => {
+    let affectedProduct: Product | null = null;
     const updatedProducts = products.map((p) => {
       if (p.id === productId) {
-        return {
+        const updated = {
           ...p,
           stock: Math.max(0, p.stock - quantityDeducted),
         };
+        affectedProduct = updated;
+        return updated;
       }
       return p;
     });
     setProducts(updatedProducts);
     saveProducts(updatedProducts);
+
+    if (affectedProduct) {
+      syncProductToSupabase(affectedProduct).catch((e) => console.warn('Supabase stock sync error', e));
+    }
   };
 
-  // Inventory: Save Product
+  // Inventory: Save Product (Create or Update)
   const handleSaveProduct = (product: Product) => {
     const existingIndex = products.findIndex((p) => p.id === product.id);
     let updated: Product[];
@@ -151,66 +217,105 @@ export default function App() {
     }
     setProducts(updated);
     saveProducts(updated);
+
+    // Sync to Supabase
+    syncProductToSupabase(product).catch((e) => console.warn('Supabase product sync error', e));
   };
 
-  // Inventory: Delete Product
+  // Inventory: Delete Single Product
   const handleDeleteProduct = (productId: string) => {
     const updated = products.filter((p) => p.id !== productId);
     setProducts(updated);
     saveProducts(updated);
+
+    // Delete in Supabase
+    deleteProductFromSupabase(productId).catch((e) => console.warn('Supabase delete error', e));
+  };
+
+  // Inventory: Delete Multiple Products (Bulk)
+  const handleDeleteMultipleProducts = (productIds: string[]) => {
+    const idSet = new Set(productIds);
+    const updated = products.filter((p) => !idSet.has(p.id));
+    setProducts(updated);
+    saveProducts(updated);
+
+    // Delete in Supabase
+    deleteMultipleProductsFromSupabase(productIds).catch((e) => console.warn('Supabase bulk delete error', e));
   };
 
   // Inventory: Manual Stock Adjustment (Merma, dañado, uso interno)
   const handleAdjustStock = (adjustment: StockAdjustment) => {
-    // 1. Log adjustment
     const updatedAdjustments = [adjustment, ...adjustments];
     setAdjustments(updatedAdjustments);
     saveAdjustments(updatedAdjustments);
 
-    // 2. Update product stock
+    let changedProduct: Product | null = null;
     const updatedProducts = products.map((p) => {
       if (p.id === adjustment.productId) {
-        return {
+        const prod = {
           ...p,
           stock: adjustment.newStock,
         };
+        changedProduct = prod;
+        return prod;
       }
       return p;
     });
     setProducts(updatedProducts);
     saveProducts(updatedProducts);
+
+    if (changedProduct) {
+      syncProductToSupabase(changedProduct).catch((e) => console.warn('Supabase adjust sync error', e));
+    }
   };
 
-  // Purchases: Save purchase and automatically update stock and cost
-  const handleSavePurchase = (purchase: Purchase) => {
-    // 1. Save purchase record
-    const updatedPurchases = [purchase, ...purchases];
+  // Purchases: Save Purchase & Update Product Stocks
+  const handleSavePurchase = (newPurchase: Purchase) => {
+    const updatedPurchases = [newPurchase, ...purchases];
     setPurchases(updatedPurchases);
     savePurchases(updatedPurchases);
 
-    // 2. Restock products and update costs
-    const updatedProducts = products.map((prod) => {
-      const match = purchase.items.find((item) => item.productId === prod.id);
-      if (match) {
-        return {
-          ...prod,
-          stock: prod.stock + match.quantity,
-          costPrice: match.costPrice,
+    // Update stock & cost price of affected products
+    const updatedProducts = [...products];
+    newPurchase.items.forEach((item) => {
+      const idx = updatedProducts.findIndex((p) => p.id === item.productId);
+      if (idx > -1) {
+        const current = updatedProducts[idx];
+        const newStock = current.stock + item.quantity;
+        const updated = {
+          ...current,
+          stock: newStock,
+          costPrice: item.costPrice,
           lastRestockDate: new Date().toISOString(),
         };
+        updatedProducts[idx] = updated;
+        syncProductToSupabase(updated).catch(() => {});
       }
-      return prod;
     });
+
     setProducts(updatedProducts);
     saveProducts(updatedProducts);
+
+    // Sync purchase to Supabase
+    syncPurchaseToSupabase(newPurchase).catch((e) => console.warn('Supabase purchase sync error', e));
   };
 
-  // Cash: Open Shift
+  // Purchases: Delete Multiple Purchases
+  const handleDeletePurchases = (purchaseIds: string[]) => {
+    const idSet = new Set(purchaseIds);
+    const updated = purchases.filter((p) => !idSet.has(p.id));
+    setPurchases(updated);
+    savePurchases(updated);
+
+    deleteMultiplePurchasesFromSupabase(purchaseIds).catch((e) => console.warn('Supabase purchase delete error', e));
+  };
+
+  // Cash: Open shift
   const handleOpenShift = (initialAmount: number, notes?: string) => {
     const newShift: CashShift = {
       id: `shift-${Date.now()}`,
       openedAt: new Date().toISOString(),
-      openedBy: currentRole || 'Admin',
+      openedBy: currentUser.fullName || currentUser.username,
       initialAmount,
       salesCash: 0,
       salesCard: 0,
@@ -221,76 +326,141 @@ export default function App() {
       notes,
       movements: [],
     };
-    const updatedShifts = [newShift, ...shifts];
-    setShifts(updatedShifts);
-    saveCashShifts(updatedShifts);
+
+    const updated = [newShift, ...shifts];
+    setShifts(updated);
+    saveCashShifts(updated);
+
+    syncCashShiftToSupabase(newShift).catch(() => {});
   };
 
-  // Cash: Close Shift (Corte Z)
+  // Cash: Close shift (Corte Z)
   const handleCloseShift = (shiftId: string, countedCash: number, notes?: string) => {
-    const updatedShifts = shifts.map((s) => {
-      if (s.id === shiftId) {
-        const difference = Number((countedCash - s.expectedCash).toFixed(2));
-        return {
-          ...s,
-          closedAt: new Date().toISOString(),
-          closedBy: currentRole || 'Admin',
-          countedCash,
-          difference,
-          status: 'cerrada' as const,
-          notes: notes || s.notes,
-        };
-      }
-      return s;
-    });
-    setShifts(updatedShifts);
-    saveCashShifts(updatedShifts);
+    const targetShift = shifts.find((s) => s.id === shiftId) || activeShift;
+    if (!targetShift) return;
+
+    const diff = countedCash - targetShift.expectedCash;
+    const closedShift: CashShift = {
+      ...targetShift,
+      closedAt: new Date().toISOString(),
+      closedBy: currentUser.fullName || currentUser.username,
+      countedCash,
+      difference: Number(diff.toFixed(2)),
+      status: 'cerrada',
+      notes: notes || targetShift.notes,
+    };
+
+    const updated = shifts.map((s) => (s.id === targetShift.id ? closedShift : s));
+    setShifts(updated);
+    saveCashShifts(updated);
+
+    syncCashShiftToSupabase(closedShift).catch(() => {});
   };
 
-  // Cash: Add movement (Entrada / Retiro de caja chica)
+  // Cash: Add Movement (Entrada / Retiro)
   const handleAddCashMovement = (type: 'entrada' | 'retiro', amount: number, reason: string) => {
     if (!activeShift) return;
 
-    const newMovement = {
+    const newMovement: CashMovement = {
       id: `mov-${Date.now()}`,
       shiftId: activeShift.id,
       type,
       amount,
       reason,
       timestamp: new Date().toISOString(),
-      user: currentRole || 'Admin',
+      user: currentUser.fullName || currentUser.username,
     };
 
-    const updatedShifts = shifts.map((s) => {
-      if (s.id === activeShift.id) {
-        const newCashIn = type === 'entrada' ? s.cashIn + amount : s.cashIn;
-        const newCashOut = type === 'retiro' ? s.cashOut + amount : s.cashOut;
-        const newExpected = s.initialAmount + s.salesCash + newCashIn - newCashOut;
+    const newCashIn = type === 'entrada' ? activeShift.cashIn + amount : activeShift.cashIn;
+    const newCashOut = type === 'retiro' ? activeShift.cashOut + amount : activeShift.cashOut;
+    const expected = activeShift.initialAmount + activeShift.salesCash + newCashIn - newCashOut;
 
-        return {
-          ...s,
-          cashIn: Number(newCashIn.toFixed(2)),
-          cashOut: Number(newCashOut.toFixed(2)),
-          expectedCash: Number(newExpected.toFixed(2)),
-          movements: [newMovement, ...s.movements],
-        };
-      }
-      return s;
-    });
+    const updatedShift: CashShift = {
+      ...activeShift,
+      cashIn: Number(newCashIn.toFixed(2)),
+      cashOut: Number(newCashOut.toFixed(2)),
+      expectedCash: Number(expected.toFixed(2)),
+      movements: [newMovement, ...(activeShift.movements || [])],
+    };
 
+    const updatedShifts = shifts.map((s) => (s.id === activeShift.id ? updatedShift : s));
     setShifts(updatedShifts);
     saveCashShifts(updatedShifts);
+
+    syncCashShiftToSupabase(updatedShift).catch(() => {});
+  };
+
+  // Employees: Save User (Create or Update)
+  const handleSaveUser = (user: UserAccount) => {
+    const existingIndex = users.findIndex((u) => u.id === user.id);
+    let updated: UserAccount[];
+    if (existingIndex > -1) {
+      updated = [...users];
+      updated[existingIndex] = user;
+    } else {
+      updated = [user, ...users];
+    }
+    setUsers(updated);
+    saveUsers(updated);
+
+    // If currently logged in user updated their own info
+    if (currentUser.id === user.id) {
+      setCurrentUser(user);
+      saveCurrentUser(user);
+      saveAuthSession(user);
+    }
+
+    syncUserToSupabase(user).catch(() => {});
+  };
+
+  // Employees: Delete Single User
+  const handleDeleteUser = (userId: string) => {
+    const updated = users.filter((u) => u.id !== userId);
+    setUsers(updated);
+    saveUsers(updated);
+
+    deleteUserFromSupabase(userId).catch(() => {});
+  };
+
+  // Employees: Delete Multiple Users
+  const handleDeleteMultipleUsers = (userIds: string[]) => {
+    const idSet = new Set(userIds);
+    const updated = users.filter((u) => !idSet.has(u.id));
+    setUsers(updated);
+    saveUsers(updated);
+
+    deleteMultipleUsersFromSupabase(userIds).catch(() => {});
+  };
+
+  // Employees: Toggle User Active Status
+  const handleToggleUserStatus = (userId: string) => {
+    const updated = users.map((u) => {
+      if (u.id === userId) {
+        const modified = { ...u, isActive: !u.isActive };
+        syncUserToSupabase(modified).catch(() => {});
+        return modified;
+      }
+      return u;
+    });
+    setUsers(updated);
+    saveUsers(updated);
+  };
+
+  // Profile: Update Personal Profile
+  const handleUpdateProfile = (updatedUser: UserAccount) => {
+    handleSaveUser(updatedUser);
   };
 
   // Count low stock items for badges
   const lowStockCount = products.filter((p) => p.stock <= p.minStock).length;
 
-  // IF NO ROLE IS SELECTED, RENDER HOME ROLE SELECTOR SCREEN
-  if (!currentRole) {
+  // IF NO ROLE IS LOGGED IN, RENDER CREDENTIAL LOGIN SCREEN
+  if (!currentRole || !activeSession) {
     return (
       <>
         <RoleSelector
-          onSelectRole={handleSelectRole}
+          users={users}
+          onLoginSuccess={handleLoginSuccess}
           onOpenDataSettings={() => setIsDataModalOpen(true)}
         />
         <DataManagementModal
@@ -309,21 +479,24 @@ export default function App() {
       {/* Unified Institutional Header */}
       <Header
         currentRole={currentRole}
+        currentUser={currentUser}
         activeShift={activeShift}
         onLogout={handleLogout}
         onOpenDataSettings={() => setIsDataModalOpen(true)}
         onOpenCashModal={() => setActiveModule('cash')}
+        onOpenProfile={currentRole === 'Admin' ? () => setActiveModule('profile') : undefined}
       />
 
       {/* Main Workspace: Desktop Sidebar + Active Module Container */}
       <div className="flex flex-1 overflow-hidden relative">
-        {/* Desktop Sidebar Navigation */}
+        {/* Desktop Sidebar Navigation (Role-aware) */}
         <Sidebar
           activeModule={activeModule}
           onSelectModule={setActiveModule}
           isCollapsed={isSidebarCollapsed}
           onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
           lowStockCount={lowStockCount}
+          userRole={currentRole}
         />
 
         {/* Dynamic Module Rendering */}
@@ -339,21 +512,23 @@ export default function App() {
             />
           )}
 
-          {activeModule === 'inventory' && (
+          {activeModule === 'inventory' && currentRole === 'Admin' && (
             <InventoryModule
               products={products}
               onSaveProduct={handleSaveProduct}
               onDeleteProduct={handleDeleteProduct}
+              onDeleteMultipleProducts={handleDeleteMultipleProducts}
               onAdjustStock={handleAdjustStock}
             />
           )}
 
-          {activeModule === 'purchases' && (
+          {activeModule === 'purchases' && currentRole === 'Admin' && (
             <PurchasesModule
               products={products}
               purchases={purchases}
               adjustments={adjustments}
               onSavePurchase={handleSavePurchase}
+              onDeletePurchases={handleDeletePurchases}
             />
           )}
 
@@ -368,17 +543,35 @@ export default function App() {
             />
           )}
 
-          {activeModule === 'reports' && (
+          {activeModule === 'reports' && currentRole === 'Admin' && (
             <ReportsModule sales={sales} products={products} />
+          )}
+
+          {activeModule === 'employees' && currentRole === 'Admin' && (
+            <EmployeesModule
+              users={users}
+              onSaveUser={handleSaveUser}
+              onDeleteUser={handleDeleteUser}
+              onDeleteMultipleUsers={handleDeleteMultipleUsers}
+              onToggleUserStatus={handleToggleUserStatus}
+            />
+          )}
+
+          {activeModule === 'profile' && currentRole === 'Admin' && (
+            <ProfileModule
+              currentUser={currentUser}
+              onUpdateProfile={handleUpdateProfile}
+            />
           )}
         </main>
       </div>
 
-      {/* Touch-Optimized Mobile & Tablet Bottom Bar */}
+      {/* Touch-Optimized Mobile & Tablet Bottom Bar (Role-aware) */}
       <BottomNav
         activeModule={activeModule}
         onSelectModule={setActiveModule}
         lowStockCount={lowStockCount}
+        userRole={currentRole}
       />
 
       {/* Data Management & Supabase Modal */}

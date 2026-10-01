@@ -1,4 +1,46 @@
-import { Product, ServiceItem, Sale, CashShift, Purchase } from '../types';
+import { Product, ServiceItem, Sale, CashShift, Purchase, UserAccount } from '../types';
+
+export const SAMPLE_USERS: UserAccount[] = [
+  {
+    id: 'usr-admin1',
+    username: 'Admin1',
+    fullName: 'Administrador Principal',
+    email: 'admin@elescritorio.mx',
+    phone: '55 1234 5678',
+    role: 'Admin',
+    password: 'Chevropar#1970',
+    avatarUrl: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=200&h=200&fit=crop&crop=faces',
+    identification: 'ADM-2026-01',
+    isActive: true,
+    createdAt: '2026-01-01T08:00:00.000Z',
+  },
+  {
+    id: 'usr-haroldo90',
+    username: 'haroldo90',
+    fullName: 'Haroldo Administrador',
+    email: 'haroldo@elescritorio.mx',
+    phone: '55 9876 5432',
+    role: 'Admin',
+    password: 'Chevropar#1970',
+    avatarUrl: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop&crop=faces',
+    identification: 'ADM-2026-02',
+    isActive: true,
+    createdAt: '2026-01-01T08:00:00.000Z',
+  },
+  {
+    id: 'usr-cajero1',
+    username: 'cajero1',
+    fullName: 'Carlos Mendoza Ramos',
+    email: 'carlos.mendoza@elescritorio.mx',
+    phone: '55 8765 4321',
+    role: 'Cajero',
+    password: 'Chevropar#1970',
+    avatarUrl: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=200&h=200&fit=crop&crop=faces',
+    identification: 'CAJ-2026-01',
+    isActive: true,
+    createdAt: '2026-02-01T09:00:00.000Z',
+  },
+];
 
 export const SAMPLE_SERVICES: ServiceItem[] = [
   {
@@ -9,6 +51,7 @@ export const SAMPLE_SERVICES: ServiceItem[] = [
     unit: 'hoja',
     iconName: 'Copy',
     description: 'Fotocopia blanco y negro tamaño carta',
+    isActive: true,
   },
   {
     id: 'srv-2',
@@ -18,6 +61,7 @@ export const SAMPLE_SERVICES: ServiceItem[] = [
     unit: 'hoja',
     iconName: 'Printer',
     description: 'Fotocopia a color papel bond',
+    isActive: true,
   },
   {
     id: 'srv-3',
@@ -27,6 +71,7 @@ export const SAMPLE_SERVICES: ServiceItem[] = [
     unit: 'juego',
     iconName: 'IdCard',
     description: 'Copia ampliada o estándar al 200% / normal',
+    isActive: true,
   },
   {
     id: 'srv-4',
@@ -36,6 +81,7 @@ export const SAMPLE_SERVICES: ServiceItem[] = [
     unit: 'hoja',
     iconName: 'FileText',
     description: 'Desde USB, WhatsApp o correo',
+    isActive: true,
   },
   {
     id: 'srv-5',
@@ -45,6 +91,7 @@ export const SAMPLE_SERVICES: ServiceItem[] = [
     unit: 'hoja',
     iconName: 'FileSpreadsheet',
     description: 'Alta definición en papel bond',
+    isActive: true,
   },
   {
     id: 'srv-6',
@@ -54,6 +101,7 @@ export const SAMPLE_SERVICES: ServiceItem[] = [
     unit: 'hoja',
     iconName: 'ScanLine',
     description: 'Envío directo a WhatsApp o correo',
+    isActive: true,
   },
   {
     id: 'srv-7',
@@ -63,6 +111,7 @@ export const SAMPLE_SERVICES: ServiceItem[] = [
     unit: 'pieza',
     iconName: 'ShieldCheck',
     description: 'Térmico grueso alta durabilidad',
+    isActive: true,
   },
   {
     id: 'srv-8',
@@ -72,6 +121,7 @@ export const SAMPLE_SERVICES: ServiceItem[] = [
     unit: 'hoja',
     iconName: 'Layers',
     description: 'Mica térmica tamaño carta',
+    isActive: true,
   },
   {
     id: 'srv-9',
@@ -81,6 +131,7 @@ export const SAMPLE_SERVICES: ServiceItem[] = [
     unit: 'hoja',
     iconName: 'Layers',
     description: 'Mica térmica tamaño oficio',
+    isActive: true,
   },
   {
     id: 'srv-10',
@@ -90,6 +141,7 @@ export const SAMPLE_SERVICES: ServiceItem[] = [
     unit: 'trabajo',
     iconName: 'BookOpen',
     description: 'Incluye pastas transparentes delantera y trasera',
+    isActive: true,
   },
 ];
 

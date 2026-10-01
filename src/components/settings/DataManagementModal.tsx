@@ -16,13 +16,22 @@ import {
   isSampleDataCleared,
   clearAllSampleData,
   restoreSampleData,
+  getProducts,
+  getServices,
+  getUsers,
+  getSales,
+  getCashShifts,
+  getPurchases,
 } from '../../services/storage';
 import {
   getStoredSupabaseConfig,
   saveSupabaseConfig,
   testSupabaseConnection,
   clearSupabaseTables,
+  uploadAllLocalToSupabase,
+  normalizeSupabaseUrl,
 } from '../../services/supabaseClient';
+import { FULL_SUPABASE_SQL_WITH_SAMPLE_DATA } from '../../services/supabaseSql';
 import { SupabaseConfig } from '../../types';
 
 interface DataManagementModalProps {
@@ -43,6 +52,7 @@ export const DataManagementModal: React.FC<DataManagementModalProps> = ({
   const [supabaseStatus, setSupabaseStatus] = useState<{ message: string; success: boolean } | null>(null);
   const [isTestingSupabase, setIsTestingSupabase] = useState(false);
   const [isClearingSupabase, setIsClearingSupabase] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [showSqlSchema, setShowSqlSchema] = useState(false);
   const [copiedSql, setCopiedSql] = useState(false);
 
@@ -110,74 +120,28 @@ export const DataManagementModal: React.FC<DataManagementModalProps> = ({
     }
   };
 
-  const sqlSchemaText = `-- Esquema recomendado para Supabase / PostgreSQL (Papelería El Escritorio)
-CREATE TABLE IF NOT EXISTS products (
-  id TEXT PRIMARY KEY,
-  barcode TEXT NOT NULL,
-  name TEXT NOT NULL,
-  category TEXT NOT NULL,
-  brand TEXT,
-  cost_price NUMERIC(10,2) NOT NULL DEFAULT 0,
-  sale_price NUMERIC(10,2) NOT NULL DEFAULT 0,
-  stock INT NOT NULL DEFAULT 0,
-  min_stock INT NOT NULL DEFAULT 5,
-  unit_type TEXT NOT NULL DEFAULT 'pieza',
-  package_units INT DEFAULT 1,
-  package_cost_price NUMERIC(10,2),
-  package_sale_price NUMERIC(10,2),
-  created_at TIMESTAMPTZ DEFAULT now()
-);
+  // Upload all local data to Supabase
+  const handleUploadToSupabase = async () => {
+    setIsSyncing(true);
+    try {
+      const res = await uploadAllLocalToSupabase({
+        products: getProducts(),
+        services: getServices(),
+        users: getUsers(),
+        sales: getSales(),
+        shifts: getCashShifts(),
+        purchases: getPurchases(),
+      });
+      setSupabaseStatus(res);
+      if (res.success) {
+        alert(res.message);
+      }
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
-CREATE TABLE IF NOT EXISTS cash_shifts (
-  id TEXT PRIMARY KEY,
-  opened_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  closed_at TIMESTAMPTZ,
-  opened_by TEXT NOT NULL,
-  closed_by TEXT,
-  initial_amount NUMERIC(10,2) NOT NULL DEFAULT 0,
-  sales_cash NUMERIC(10,2) DEFAULT 0,
-  sales_card NUMERIC(10,2) DEFAULT 0,
-  expected_cash NUMERIC(10,2) DEFAULT 0,
-  counted_cash NUMERIC(10,2),
-  difference NUMERIC(10,2),
-  status TEXT NOT NULL DEFAULT 'abierta'
-);
-
-CREATE TABLE IF NOT EXISTS sales (
-  id TEXT PRIMARY KEY,
-  folio INT NOT NULL,
-  date TIMESTAMPTZ DEFAULT now(),
-  total NUMERIC(10,2) NOT NULL,
-  cost_total NUMERIC(10,2) NOT NULL,
-  profit NUMERIC(10,2) NOT NULL,
-  payment_method TEXT NOT NULL,
-  cash_received NUMERIC(10,2),
-  change NUMERIC(10,2),
-  card_reference TEXT,
-  cash_shift_id TEXT REFERENCES cash_shifts(id),
-  cashier_name TEXT,
-  status TEXT DEFAULT 'completada'
-);
-
-CREATE TABLE IF NOT EXISTS sale_items (
-  id TEXT PRIMARY KEY,
-  sale_id TEXT REFERENCES sales(id) ON DELETE CASCADE,
-  product_id TEXT,
-  name TEXT NOT NULL,
-  price NUMERIC(10,2) NOT NULL,
-  quantity INT NOT NULL,
-  subtotal NUMERIC(10,2) NOT NULL
-);
-
-CREATE TABLE IF NOT EXISTS purchases (
-  id TEXT PRIMARY KEY,
-  supplier TEXT NOT NULL,
-  invoice_number TEXT,
-  date TIMESTAMPTZ DEFAULT now(),
-  total NUMERIC(10,2) NOT NULL,
-  notes TEXT
-);
-`;
+  const sqlSchemaText = FULL_SUPABASE_SQL_WITH_SAMPLE_DATA;
 
   const copySqlToClipboard = () => {
     navigator.clipboard.writeText(sqlSchemaText);
@@ -331,13 +295,25 @@ CREATE TABLE IF NOT EXISTS purchases (
 
             {/* Action buttons for Supabase */}
             <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t border-gray-200">
-              <button
-                disabled={isTestingSupabase || !supabaseConfig.url}
-                onClick={handleSaveAndTestSupabase}
-                className="px-4 py-2 rounded-xl bg-[#1F4461] hover:bg-[#163248] text-white text-xs font-bold transition shadow-xs cursor-pointer"
-              >
-                {isTestingSupabase ? 'Verificando...' : 'Guardar y Probar Conexión'}
-              </button>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  disabled={isTestingSupabase || !supabaseConfig.url}
+                  onClick={handleSaveAndTestSupabase}
+                  className="px-4 py-2 rounded-xl bg-[#1F4461] hover:bg-[#163248] text-white text-xs font-bold transition shadow-xs cursor-pointer"
+                >
+                  {isTestingSupabase ? 'Verificando...' : 'Guardar y Probar'}
+                </button>
+
+                <button
+                  disabled={isSyncing || !supabaseConfig.url}
+                  onClick={handleUploadToSupabase}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#9CC55B] hover:bg-[#8bb44c] text-[#1F4461] text-xs font-extrabold transition shadow-xs cursor-pointer"
+                  title="Sube todos los productos, servicios, usuarios y ventas locales a tu base de datos Supabase"
+                >
+                  <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+                  <span>{isSyncing ? 'Sincronizando...' : 'Subir Todo a Supabase'}</span>
+                </button>
+              </div>
 
               <button
                 disabled={isClearingSupabase || !supabaseConfig.url}
@@ -346,7 +322,7 @@ CREATE TABLE IF NOT EXISTS purchases (
                 title="Borrar registros en tablas de Supabase"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>Borrar Registros en Supabase</span>
+                <span>Borrar en Supabase</span>
               </button>
             </div>
 

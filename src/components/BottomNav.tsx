@@ -6,46 +6,65 @@ interface BottomNavProps {
   activeModule: ActiveModule;
   onSelectModule: (module: ActiveModule) => void;
   lowStockCount: number;
+  userRole: string;
 }
 
 export const BottomNav: React.FC<BottomNavProps> = ({
   activeModule,
   onSelectModule,
   lowStockCount,
+  userRole,
 }) => {
-  const navItems: { id: ActiveModule; label: string; icon: React.ElementType; badge?: number }[] = [
+  const allNavItems: {
+    id: ActiveModule;
+    label: string;
+    icon: React.ElementType;
+    badge?: number;
+    roles: string[];
+  }[] = [
     {
       id: 'pos',
       label: 'Caja',
       icon: ShoppingCart,
+      roles: ['Admin', 'Cajero'],
     },
     {
       id: 'inventory',
       label: 'Catálogo',
       icon: PackageSearch,
       badge: lowStockCount > 0 ? lowStockCount : undefined,
+      roles: ['Admin'],
     },
     {
       id: 'purchases',
       label: 'Compras',
       icon: Truck,
+      roles: ['Admin'],
     },
     {
       id: 'cash',
       label: 'Cortes',
       icon: Coins,
+      roles: ['Admin', 'Cajero'],
     },
     {
       id: 'reports',
       label: 'Reportes',
       icon: BarChart3,
+      roles: ['Admin'],
     },
   ];
 
+  const navItems = allNavItems.filter((it) => it.roles.includes(userRole));
+
   return (
     <nav className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-white border-t border-gray-200/90 shadow-lg pb-safe">
-      <div className="grid grid-cols-5 h-16">
-        {navItems.map(item => {
+      <div
+        className={`grid h-16 ${
+          navItems.length === 2 ? 'grid-cols-2 max-w-sm mx-auto' : 'grid-cols-5'
+        }`}
+      >
+        {navItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeModule === item.id;
 
@@ -86,3 +105,4 @@ export const BottomNav: React.FC<BottomNavProps> = ({
     </nav>
   );
 };
+

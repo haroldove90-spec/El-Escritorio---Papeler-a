@@ -13,12 +13,18 @@ import {
   Check,
   X,
   Sparkles,
+  Eye,
+  CheckCircle,
+  XCircle,
+  Power,
+  Info,
 } from 'lucide-react';
 
 interface InventoryModuleProps {
   products: Product[];
   onSaveProduct: (product: Product) => void;
   onDeleteProduct: (productId: string) => void;
+  onDeleteMultipleProducts?: (productIds: string[]) => void;
   onAdjustStock: (adjustment: StockAdjustment) => void;
 }
 
@@ -26,11 +32,19 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
   products,
   onSaveProduct,
   onDeleteProduct,
+  onDeleteMultipleProducts,
   onAdjustStock,
 }) => {
   const [searchTerm, setSearchTerm] = useState('');
   const [categoryFilter, setCategoryFilter] = useState('todos');
   const [stockFilter, setStockFilter] = useState<'todos' | 'bajo'>('todos');
+  const [statusFilter, setStatusFilter] = useState<'todos' | 'activos' | 'inactivos'>('todos');
+
+  // Multi-selection state
+  const [selectedProductIds, setSelectedProductIds] = useState<string[]>([]);
+
+  // View Details Modal state
+  const [viewingProduct, setViewingProduct] = useState<Product | null>(null);
 
   // Edit / Create Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -56,6 +70,7 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
   const [formPackageUnits, setFormPackageUnits] = useState('12');
   const [formPackageCostPrice, setFormPackageCostPrice] = useState('');
   const [formPackageSalePrice, setFormPackageSalePrice] = useState('');
+  const [formIsActive, setFormIsActive] = useState(true);
 
   const categories = ['todos', 'Escolares', 'Papelería', 'Oficina', 'Arte y Dibujo', 'Tecnología', 'Envolturas y Regalos', 'Otros'];
 
@@ -79,6 +94,7 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
     setFormPackageUnits('12');
     setFormPackageCostPrice('');
     setFormPackageSalePrice('');
+    setFormIsActive(true);
     setIsModalOpen(true);
   };
 
@@ -96,7 +112,17 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
     setFormPackageUnits(product.packageUnits.toString());
     setFormPackageCostPrice(product.packageCostPrice ? product.packageCostPrice.toString() : '');
     setFormPackageSalePrice(product.packageSalePrice ? product.packageSalePrice.toString() : '');
+    setFormIsActive(product.isActive !== false);
     setIsModalOpen(true);
+  };
+
+  // Toggle active/inactive
+  const handleToggleProductActive = (product: Product) => {
+    const updated = {
+      ...product,
+      isActive: !product.isActive,
+    };
+    onSaveProduct(updated);
   };
 
   // Profit Margin calculation
@@ -131,6 +157,7 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
       packageUnits: pkgUnitsNum,
       packageCostPrice: formPackageCostPrice ? parseFloat(formPackageCostPrice) : undefined,
       packageSalePrice: formPackageSalePrice ? parseFloat(formPackageSalePrice) : undefined,
+      isActive: formIsActive,
       createdAt: editingProduct ? editingProduct.createdAt : new Date().toISOString(),
       lastRestockDate: new Date().toISOString(),
     };
@@ -180,11 +207,61 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
 
     const matchesCategory = categoryFilter === 'todos' || prod.category === categoryFilter;
     const matchesStock = stockFilter === 'todos' || (stockFilter === 'bajo' && prod.stock <= prod.minStock);
+    const matchesStatus =
+      statusFilter === 'todos' ||
+      (statusFilter === 'activos' && prod.isActive !== false) ||
+      (statusFilter === 'inactivos' && prod.isActive === false);
 
-    return matchesSearch && matchesCategory && matchesStock;
+    return matchesSearch && matchesCategory && matchesStock && matchesStatus;
   });
 
   const lowStockProductsCount = products.filter((p) => p.stock <= p.minStock).length;
+
+  // Multi-selection handlers
+  const allFilteredSelected =
+    filteredProducts.length > 0 &&
+    filteredProducts.every((p) => selectedProductIds.includes(p.id));
+
+  const handleToggleSelectAll = () => {
+    if (allFilteredSelected) {
+      const filteredIds = new Set(filteredProducts.map((p) => p.id));
+      setSelectedProductIds((prev) => prev.filter((id) => !filteredIds.has(id)));
+    } else {
+      const newIds = new Set([...selectedProductIds, ...filteredProducts.map((p) => p.id)]);
+      setSelectedProductIds(Array.from(newIds));
+    }
+  };
+
+  const handleToggleSelectProduct = (id: string) => {
+    setSelectedProductIds((prev) =>
+      prev.includes(id) ? prev.filter((itemId) => itemId !== id) : [...prev, id]
+    );
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedProductIds.length === 0) return;
+    if (
+      confirm(
+        `¿Eliminar definitivamente los ${selectedProductIds.length} productos seleccionados? Esta acción no se puede deshacer.`
+      )
+    ) {
+      if (onDeleteMultipleProducts) {
+        onDeleteMultipleProducts(selectedProductIds);
+      } else {
+        selectedProductIds.forEach((id) => onDeleteProduct(id));
+      }
+      setSelectedProductIds([]);
+    }
+  };
+
+  const handleToggleActiveSelected = (newActiveState: boolean) => {
+    if (selectedProductIds.length === 0) return;
+    const targets = products.filter((p) => selectedProductIds.includes(p.id));
+    targets.forEach((p) => {
+      onSaveProduct({ ...p, isActive: newActiveState });
+    });
+    setSelectedProductIds([]);
+  };
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-gray-50 pb-16 md:pb-0">
@@ -196,7 +273,7 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
               Catálogo e Inventario
             </h1>
             <p className="text-xs text-gray-500 mt-0.5">
-              Control de existencias, código de barras, piezas y paquetes
+              Control de existencias, código de barras, piezas, paquetes y activación de productos
             </p>
           </div>
 
@@ -225,6 +302,23 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
           </div>
 
           <div className="flex items-center gap-2 overflow-x-auto">
+            {/* Status Filter */}
+            <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl">
+              {(['todos', 'activos', 'inactivos'] as const).map((st) => (
+                <button
+                  key={st}
+                  onClick={() => setStatusFilter(st)}
+                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold capitalize transition cursor-pointer ${
+                    statusFilter === st
+                      ? 'bg-white text-[#1F4461] shadow-xs font-bold'
+                      : 'text-gray-500 hover:text-gray-900'
+                  }`}
+                >
+                  {st}
+                </button>
+              ))}
+            </div>
+
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
@@ -254,11 +348,63 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
 
       {/* Main Table Content */}
       <div className="flex-1 p-4 sm:p-6 overflow-y-auto">
+        {/* Bulk Action Bar */}
+        {selectedProductIds.length > 0 && (
+          <div className="mb-4 p-3 rounded-2xl bg-[#1F4461] text-white flex flex-wrap items-center justify-between gap-3 shadow-lg animate-in slide-in-from-top-2">
+            <div className="flex items-center gap-2.5">
+              <span className="w-7 h-7 rounded-xl bg-[#9CC55B] text-[#1F4461] font-black text-xs flex items-center justify-center shadow-xs">
+                {selectedProductIds.length}
+              </span>
+              <span className="text-xs font-bold">
+                {selectedProductIds.length === 1
+                  ? '1 producto seleccionado'
+                  : `${selectedProductIds.length} productos seleccionados`}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handleToggleActiveSelected(true)}
+                className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-emerald-300 transition cursor-pointer"
+              >
+                Activar
+              </button>
+              <button
+                onClick={() => handleToggleActiveSelected(false)}
+                className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 text-xs font-bold text-amber-300 transition cursor-pointer"
+              >
+                Desactivar
+              </button>
+              <button
+                onClick={handleDeleteSelected}
+                className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl bg-red-600 hover:bg-red-700 text-xs font-bold text-white transition cursor-pointer shadow-sm active:scale-95"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Borrar Seleccionados</span>
+              </button>
+              <button
+                onClick={() => setSelectedProductIds([])}
+                className="px-3 py-1.5 rounded-xl hover:bg-white/10 text-xs text-gray-300 cursor-pointer transition"
+              >
+                Deseleccionar
+              </button>
+            </div>
+          </div>
+        )}
+
         <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs text-gray-700">
               <thead className="bg-gray-50 border-b border-gray-200 text-gray-500 uppercase tracking-wider font-bold">
                 <tr>
+                  <th className="py-3 px-3 text-center w-10">
+                    <input
+                      type="checkbox"
+                      checked={allFilteredSelected && filteredProducts.length > 0}
+                      onChange={handleToggleSelectAll}
+                      className="w-4 h-4 rounded text-[#1F4461] cursor-pointer"
+                      title="Seleccionar todos los productos visibles"
+                    />
+                  </th>
                   <th className="py-3 px-4">Producto & Código</th>
                   <th className="py-3 px-4">Categoría / Marca</th>
                   <th className="py-3 px-4 text-center">Tipo & Paquete</th>
@@ -266,23 +412,37 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                   <th className="py-3 px-4 text-right">Precio Venta</th>
                   <th className="py-3 px-4 text-center">Margen</th>
                   <th className="py-3 px-4 text-center">Stock</th>
+                  <th className="py-3 px-4 text-center">Estado</th>
                   <th className="py-3 px-4 text-right">Acciones</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
                 {filteredProducts.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-12 text-center text-gray-400">
+                    <td colSpan={10} className="py-12 text-center text-gray-400">
                       No se encontraron productos con los filtros seleccionados.
                     </td>
                   </tr>
                 ) : (
                   filteredProducts.map((prod) => {
                     const isLowStock = prod.stock <= prod.minStock;
+                    const isSelected = selectedProductIds.includes(prod.id);
                     const margin = prod.costPrice > 0 ? (((prod.salePrice - prod.costPrice) / prod.costPrice) * 100).toFixed(0) : '0';
 
                     return (
-                      <tr key={prod.id} className="hover:bg-gray-50/80 transition">
+                      <tr
+                        key={prod.id}
+                        className={`transition ${isSelected ? 'bg-[#1F4461]/5' : 'hover:bg-gray-50/80'}`}
+                      >
+                        <td className="py-3 px-3 text-center">
+                          <input
+                            type="checkbox"
+                            checked={isSelected}
+                            onChange={() => handleToggleSelectProduct(prod.id)}
+                            className="w-4 h-4 rounded text-[#1F4461] cursor-pointer"
+                            title={`Seleccionar ${prod.name}`}
+                          />
+                        </td>
                         <td className="py-3 px-4">
                           <p className="font-bold text-gray-900">{prod.name}</p>
                           <div className="flex items-center gap-1 text-[11px] font-mono text-gray-400 mt-0.5">
@@ -335,8 +495,35 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                             )}
                           </div>
                         </td>
+
+                        {/* Estado: Activo / Desactivado Toggle */}
+                        <td className="py-3 px-4 text-center">
+                          <button
+                            onClick={() => handleToggleProductActive(prod)}
+                            className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition cursor-pointer flex items-center gap-1 mx-auto ${
+                              prod.isActive !== false
+                                ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                                : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                            }`}
+                            title="Haz clic para activar o desactivar este producto"
+                          >
+                            <Power className="w-3 h-3" />
+                            <span>{prod.isActive !== false ? 'Activo' : 'Inactivo'}</span>
+                          </button>
+                        </td>
+
                         <td className="py-3 px-4 text-right">
                           <div className="flex items-center justify-end gap-1.5">
+                            {/* Ver Detalles */}
+                            <button
+                              onClick={() => setViewingProduct(prod)}
+                              title="Ver detalles completos del producto"
+                              className="p-1.5 rounded-lg text-gray-500 hover:text-[#1F4461] hover:bg-gray-100 transition cursor-pointer"
+                            >
+                              <Eye className="w-4 h-4" />
+                            </button>
+
+                            {/* Ajuste manual */}
                             <button
                               onClick={() => openAdjustStockModal(prod)}
                               title="Ajuste rápido de stock (Merma/Dañado/Uso interno)"
@@ -344,6 +531,8 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                             >
                               <SlidersHorizontal className="w-4 h-4" />
                             </button>
+
+                            {/* Editar */}
                             <button
                               onClick={() => openEditModal(prod)}
                               title="Editar producto"
@@ -351,6 +540,8 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                             >
                               <Edit2 className="w-4 h-4" />
                             </button>
+
+                            {/* Borrar */}
                             <button
                               onClick={() => {
                                 if (confirm(`¿Eliminar ${prod.name}?`)) {
@@ -605,6 +796,23 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                   />
                   <span className="text-[10px] text-gray-400">Avisa cuando queden menos piezas</span>
                 </div>
+                {/* Estado Activo / Desactivado in Form */}
+                <div className="md:col-span-2 p-3 bg-gray-50 rounded-xl border border-gray-200 flex items-center justify-between">
+                  <div>
+                    <span className="text-xs font-bold text-gray-800 block">Estado del Producto</span>
+                    <span className="text-[11px] text-gray-500">¿Está disponible para la venta en caja?</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setFormIsActive(!formIsActive)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+                      formIsActive ? 'bg-emerald-100 text-emerald-800' : 'bg-red-100 text-red-800'
+                    }`}
+                  >
+                    <Power className="w-3.5 h-3.5" />
+                    <span>{formIsActive ? 'Activo (Disponible)' : 'Desactivado (Oculto en Caja)'}</span>
+                  </button>
+                </div>
               </div>
 
               <div className="pt-4 border-t border-gray-200 flex justify-end gap-3">
@@ -623,6 +831,119 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* VIEW PRODUCT DETAILS MODAL (VER DETALLES) */}
+      {viewingProduct && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-lg rounded-2xl bg-white shadow-2xl overflow-hidden border border-gray-100 flex flex-col">
+            <div className="bg-[#1F4461] text-white p-4 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Info className="w-5 h-5 text-[#9CC55B]" />
+                <h3 className="font-bold text-base">Ficha del Producto</h3>
+              </div>
+              <button
+                onClick={() => setViewingProduct(null)}
+                className="p-1 rounded-lg hover:bg-white/20 text-gray-200 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-6 space-y-4 text-xs">
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">
+                    {viewingProduct.brand || viewingProduct.category}
+                  </span>
+                  <span
+                    className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                      viewingProduct.isActive !== false
+                        ? 'bg-emerald-100 text-emerald-800'
+                        : 'bg-red-100 text-red-800'
+                    }`}
+                  >
+                    {viewingProduct.isActive !== false ? 'Activo en Tienda' : 'Desactivado'}
+                  </span>
+                </div>
+                <h2 className="text-base font-extrabold text-[#1F4461]">{viewingProduct.name}</h2>
+                <div className="flex items-center gap-1.5 font-mono text-gray-500 mt-1">
+                  <Barcode className="w-4 h-4" />
+                  <span className="font-bold">{viewingProduct.barcode}</span>
+                </div>
+              </div>
+
+              {/* Specs Grid */}
+              <div className="grid grid-cols-2 gap-3 p-3.5 bg-gray-50 rounded-xl border border-gray-200">
+                <div>
+                  <span className="text-gray-500 block">Categoría:</span>
+                  <span className="font-bold text-gray-800">{viewingProduct.category}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500 block">Marca:</span>
+                  <span className="font-bold text-gray-800">{viewingProduct.brand || 'Genérica'}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500 block">Precio Costo:</span>
+                  <span className="font-mono font-bold text-gray-900">${viewingProduct.costPrice.toFixed(2)}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500 block">Precio Venta Público:</span>
+                  <span className="font-mono font-black text-[#1F4461] text-sm">${viewingProduct.salePrice.toFixed(2)}</span>
+                </div>
+                <div>
+                  <span className="text-gray-500 block">Margen de Ganancia:</span>
+                  <span className="font-bold text-emerald-700">
+                    +{viewingProduct.costPrice > 0 ? (((viewingProduct.salePrice - viewingProduct.costPrice) / viewingProduct.costPrice) * 100).toFixed(1) : 0}%
+                  </span>
+                </div>
+                <div>
+                  <span className="text-gray-500 block">Existencias:</span>
+                  <span className="font-mono font-bold text-gray-900">{viewingProduct.stock} pzas</span>
+                  <span className="text-[10px] text-gray-400 block">(Mínimo: {viewingProduct.minStock})</span>
+                </div>
+              </div>
+
+              {/* Package handling information */}
+              {viewingProduct.unitType === 'paquete' && (
+                <div className="p-3 bg-blue-50/70 rounded-xl border border-blue-200 text-[11px] space-y-1">
+                  <span className="font-bold text-[#1F4461] block">Manejo de Paquete / Caja:</span>
+                  <p className="text-gray-700">
+                    Contiene <strong>{viewingProduct.packageUnits} piezas</strong> por caja.
+                  </p>
+                  {viewingProduct.packageSalePrice && (
+                    <p className="text-gray-700 font-mono">
+                      Precio de caja completa: <strong>${viewingProduct.packageSalePrice.toFixed(2)}</strong>
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div className="text-[11px] text-gray-400">
+                Registrado el {new Date(viewingProduct.createdAt).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' })}
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2 border-t border-gray-100">
+                <button
+                  onClick={() => {
+                    const toEdit = viewingProduct;
+                    setViewingProduct(null);
+                    openEditModal(toEdit);
+                  }}
+                  className="px-4 py-2 rounded-xl bg-[#1F4461] hover:bg-[#163248] text-white font-bold text-xs shadow-xs transition cursor-pointer"
+                >
+                  Editar Producto
+                </button>
+                <button
+                  onClick={() => setViewingProduct(null)}
+                  className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold text-xs transition cursor-pointer"
+                >
+                  Cerrar
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

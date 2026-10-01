@@ -13,6 +13,7 @@ export interface Product {
   packageCostPrice?: number;
   packageSalePrice?: number;
   isService?: boolean;
+  isActive?: boolean; // Desactivar / Activar producto
   createdAt: string;
   lastRestockDate?: string;
   imageUrl?: string;
@@ -26,6 +27,22 @@ export interface ServiceItem {
   unit: string;
   iconName: string;
   description?: string;
+  isActive?: boolean; // Desactivar / Activar servicio
+}
+
+export interface UserAccount {
+  id: string;
+  username: string;
+  fullName: string;
+  email: string;
+  phone?: string;
+  role: 'Admin' | 'Cajero';
+  password?: string;
+  avatarUrl?: string;
+  identification?: string; // RFC o ID
+  isActive: boolean;
+  createdAt: string;
+  lastLogin?: string;
 }
 
 export interface CartItem {
@@ -57,6 +74,7 @@ export interface Sale {
   cashShiftId: string;
   cashierName: string;
   status: 'completada' | 'cancelada';
+  canceledReason?: string;
 }
 
 export interface CashMovement {
@@ -127,4 +145,5 @@ export interface SupabaseConfig {
   isConnected: boolean;
 }
 
-export type ActiveModule = 'pos' | 'inventory' | 'purchases' | 'cash' | 'reports';
+export type ActiveModule = 'pos' | 'inventory' | 'purchases' | 'cash' | 'reports' | 'employees' | 'profile';
+

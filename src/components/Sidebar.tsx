@@ -1,5 +1,16 @@
 import React from 'react';
-import { ShoppingCart, PackageSearch, Truck, Coins, BarChart3, ChevronLeft, ChevronRight, HelpCircle } from 'lucide-react';
+import {
+  ShoppingCart,
+  PackageSearch,
+  Truck,
+  Coins,
+  BarChart3,
+  Users,
+  User,
+  ChevronLeft,
+  ChevronRight,
+  HelpCircle,
+} from 'lucide-react';
 import { ActiveModule } from '../types';
 
 interface SidebarProps {
@@ -8,6 +19,7 @@ interface SidebarProps {
   isCollapsed: boolean;
   onToggleCollapse: () => void;
   lowStockCount: number;
+  userRole: string;
 }
 
 export const Sidebar: React.FC<SidebarProps> = ({
@@ -16,36 +28,63 @@ export const Sidebar: React.FC<SidebarProps> = ({
   isCollapsed,
   onToggleCollapse,
   lowStockCount,
+  userRole,
 }) => {
-  const menuItems: { id: ActiveModule; label: string; icon: React.ElementType; badge?: number; shortcut?: string }[] = [
+  const allMenuItems: {
+    id: ActiveModule;
+    label: string;
+    icon: React.ElementType;
+    badge?: number;
+    shortcut?: string;
+    roles: string[];
+  }[] = [
     {
       id: 'pos',
       label: 'Punto de Venta',
       icon: ShoppingCart,
       shortcut: 'F1',
+      roles: ['Admin', 'Cajero'],
     },
     {
       id: 'inventory',
       label: 'Catálogo e Inventario',
       icon: PackageSearch,
       badge: lowStockCount > 0 ? lowStockCount : undefined,
+      roles: ['Admin'],
     },
     {
       id: 'purchases',
       label: 'Compras y Entradas',
       icon: Truck,
+      roles: ['Admin'],
     },
     {
       id: 'cash',
       label: 'Caja y Cortes X / Z',
       icon: Coins,
+      roles: ['Admin', 'Cajero'],
     },
     {
       id: 'reports',
       label: 'Reportes Esenciales',
       icon: BarChart3,
+      roles: ['Admin'],
+    },
+    {
+      id: 'employees',
+      label: 'Empleados & Roles',
+      icon: Users,
+      roles: ['Admin'],
+    },
+    {
+      id: 'profile',
+      label: 'Mi Perfil',
+      icon: User,
+      roles: ['Admin'],
     },
   ];
+
+  const menuItems = allMenuItems.filter((item) => item.roles.includes(userRole));
 
   return (
     <aside
@@ -55,7 +94,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     >
       {/* Module Navigation List */}
       <div className="flex-1 py-4 px-2 space-y-1 overflow-y-auto">
-        {menuItems.map(item => {
+        {menuItems.map((item) => {
           const Icon = item.icon;
           const isActive = activeModule === item.id;
 
@@ -111,10 +150,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
         <div className="m-3 p-3 rounded-xl bg-gradient-to-br from-slate-50 to-gray-100 border border-gray-200/80 text-xs">
           <div className="flex items-center gap-1.5 font-bold text-[#1F4461] mb-1.5">
             <HelpCircle className="w-3.5 h-3.5 text-[#9CC55B]" />
-            <span>Ayuda de Teclado</span>
+            <span>Atajo Rápido</span>
           </div>
           <p className="text-[11px] text-gray-600 leading-relaxed">
-            Presiona <strong className="text-gray-800">F2</strong> para cobrar y calcular cambio al instante.
+            Presiona <strong className="text-gray-800 font-mono">F2</strong> para cobrar y <strong className="text-gray-800 font-mono">F4</strong> para buscar.
           </p>
         </div>
       )}
@@ -132,3 +171,4 @@ export const Sidebar: React.FC<SidebarProps> = ({
     </aside>
   );
 };
+

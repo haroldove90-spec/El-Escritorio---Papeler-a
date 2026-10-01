@@ -113,13 +113,17 @@ export const PosModule: React.FC<PosModuleProps> = ({
     );
 
     if (product) {
+      if (product.isActive === false) {
+        showScanNotice(`⚠️ ${product.name} está desactivado en el inventario`, 'warn');
+        return;
+      }
       addProductToCart(product);
       showScanNotice(`✓ ${product.name} agregado`, 'success');
       setSearchTerm('');
     } else {
       // Check if it's an alias or part of name
       const byName = products.find(
-        (p) => p.name.toLowerCase().includes(cleanCode.toLowerCase())
+        (p) => p.name.toLowerCase().includes(cleanCode.toLowerCase()) && p.isActive !== false
       );
       if (byName) {
         addProductToCart(byName);
@@ -303,8 +307,9 @@ export const PosModule: React.FC<PosModuleProps> = ({
     setCart([]);
   };
 
-  // Filtered Products for Catalog Search
+  // Filtered Products for Catalog Search (only active products)
   const filteredProducts = products.filter((prod) => {
+    if (prod.isActive === false) return false;
     const matchesCategory = selectedCategory === 'todos' || prod.category === selectedCategory;
     const term = searchTerm.toLowerCase().trim();
     if (!term) return matchesCategory;
@@ -316,6 +321,8 @@ export const PosModule: React.FC<PosModuleProps> = ({
         prod.brand.toLowerCase().includes(term))
     );
   });
+
+  const activeServices = services.filter((s) => s.isActive !== false);
 
   // Numeric change calculator helper
   const parsedReceived = parseFloat(cashReceived) || 0;
@@ -427,7 +434,7 @@ export const PosModule: React.FC<PosModuleProps> = ({
         </div>
 
         {/* Quick Services Panel (Physical-Inventory-Free: Copias, Impresiones, Enmicados) */}
-        {showServices && services.length > 0 && (
+        {showServices && activeServices.length > 0 && (
           <div className="p-3 sm:p-4 bg-gradient-to-r from-blue-50/60 to-emerald-50/60 border-b border-gray-200">
             <div className="flex items-center justify-between mb-2.5">
               <div className="flex items-center gap-2">
@@ -440,7 +447,7 @@ export const PosModule: React.FC<PosModuleProps> = ({
             </div>
 
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 gap-2">
-              {services.map((srv) => (
+              {activeServices.map((srv) => (
                 <button
                   key={srv.id}
                   onClick={() => addServiceToCart(srv)}

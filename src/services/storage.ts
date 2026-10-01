@@ -1,5 +1,5 @@
-import { Product, ServiceItem, Sale, CashShift, Purchase, StockAdjustment } from '../types';
-import { SAMPLE_PRODUCTS, SAMPLE_SERVICES, SAMPLE_SALES, INITIAL_CASH_SHIFT, SAMPLE_PURCHASES } from './sampleData';
+import { Product, ServiceItem, Sale, CashShift, Purchase, StockAdjustment, UserAccount } from '../types';
+import { SAMPLE_PRODUCTS, SAMPLE_SERVICES, SAMPLE_SALES, INITIAL_CASH_SHIFT, SAMPLE_PURCHASES, SAMPLE_USERS } from './sampleData';
 
 const KEYS = {
   PRODUCTS: 'papeleria_products',
@@ -9,6 +9,9 @@ const KEYS = {
   ACTIVE_SHIFT: 'papeleria_active_shift',
   PURCHASES: 'papeleria_purchases',
   ADJUSTMENTS: 'papeleria_adjustments',
+  USERS: 'papeleria_users',
+  CURRENT_USER: 'papeleria_current_user',
+  AUTH_SESSION: 'papeleria_auth_session',
   SAMPLE_CLEARED: 'papeleria_sample_cleared',
 };
 
@@ -26,12 +29,115 @@ export function setSampleDataCleared(cleared: boolean): void {
   }
 }
 
+// Session Management (stays logged in on browser reload/refresh)
+export interface AuthSession {
+  user: UserAccount;
+  token: string;
+  loginAt: string;
+}
+
+export function getAuthSession(): AuthSession | null {
+  try {
+    const raw = localStorage.getItem(KEYS.AUTH_SESSION);
+    if (raw) {
+      const session: AuthSession = JSON.parse(raw);
+      if (session?.user?.id && session.user.username) {
+        return session;
+      }
+    }
+  } catch (e) {
+    console.error('Error reading auth session', e);
+  }
+  return null;
+}
+
+export function saveAuthSession(user: UserAccount): void {
+  const session: AuthSession = {
+    user,
+    token: `token-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
+    loginAt: new Date().toISOString(),
+  };
+  localStorage.setItem(KEYS.AUTH_SESSION, JSON.stringify(session));
+  localStorage.setItem('papeleria_active_role', user.role);
+  saveCurrentUser(user);
+}
+
+export function clearAuthSession(): void {
+  localStorage.removeItem(KEYS.AUTH_SESSION);
+  localStorage.removeItem('papeleria_active_role');
+  localStorage.removeItem(KEYS.CURRENT_USER);
+}
+
+// Initialize and get Users
+export function getUsers(): UserAccount[] {
+  try {
+    const raw = localStorage.getItem(KEYS.USERS);
+    if (raw) {
+      const list: UserAccount[] = JSON.parse(raw);
+      // Ensure Admin1 and haroldo90 are present in the list
+      const hasAdmin1 = list.some((u) => u.username.toLowerCase() === 'admin1');
+      const hasHaroldo = list.some((u) => u.username.toLowerCase() === 'haroldo90');
+
+      if (!hasAdmin1 || !hasHaroldo) {
+        const merged = [...list];
+        if (!hasAdmin1) {
+          const adm1 = SAMPLE_USERS.find((u) => u.username === 'Admin1');
+          if (adm1) merged.push(adm1);
+        }
+        if (!hasHaroldo) {
+          const har = SAMPLE_USERS.find((u) => u.username === 'haroldo90');
+          if (har) merged.push(har);
+        }
+        saveUsers(merged);
+        return merged;
+      }
+      return list;
+    }
+  } catch (e) {
+    console.error('Error parsing users', e);
+  }
+
+  // Default to sample users
+  saveUsers(SAMPLE_USERS);
+  return SAMPLE_USERS;
+}
+
+export function saveUsers(users: UserAccount[]): void {
+  localStorage.setItem(KEYS.USERS, JSON.stringify(users));
+  window.dispatchEvent(new Event('papeleria_data_change'));
+}
+
+export function getCurrentUser(): UserAccount {
+  try {
+    const raw = localStorage.getItem(KEYS.CURRENT_USER);
+    if (raw) {
+      return JSON.parse(raw);
+    }
+  } catch (e) {
+    console.error('Error parsing current user', e);
+  }
+  const users = getUsers();
+  return users[0] || SAMPLE_USERS[0];
+}
+
+export function saveCurrentUser(user: UserAccount): void {
+  localStorage.setItem(KEYS.CURRENT_USER, JSON.stringify(user));
+  // Also sync in users list
+  const users = getUsers();
+  const updated = users.map(u => u.id === user.id ? user : u);
+  saveUsers(updated);
+}
+
 // Initialize and get Products
 export function getProducts(): Product[] {
   try {
     const raw = localStorage.getItem(KEYS.PRODUCTS);
     if (raw) {
-      return JSON.parse(raw);
+      const parsed: Product[] = JSON.parse(raw);
+      return parsed.map(p => ({
+        ...p,
+        isActive: p.isActive !== false,
+      }));
     }
   } catch (e) {
     console.error('Error parsing products', e);
@@ -42,9 +148,10 @@ export function getProducts(): Product[] {
     return [];
   }
 
-  // Otherwise, load default sample products
-  saveProducts(SAMPLE_PRODUCTS);
-  return SAMPLE_PRODUCTS;
+  // Otherwise, load default sample products with isActive: true
+  const initial = SAMPLE_PRODUCTS.map(p => ({ ...p, isActive: true }));
+  saveProducts(initial);
+  return initial;
 }
 
 export function saveProducts(products: Product[]): void {
@@ -57,7 +164,11 @@ export function getServices(): ServiceItem[] {
   try {
     const raw = localStorage.getItem(KEYS.SERVICES);
     if (raw) {
-      return JSON.parse(raw);
+      const parsed: ServiceItem[] = JSON.parse(raw);
+      return parsed.map(s => ({
+        ...s,
+        isActive: s.isActive !== false,
+      }));
     }
   } catch (e) {
     console.error('Error parsing services', e);
@@ -183,18 +294,25 @@ export function clearAllSampleData(): void {
   localStorage.setItem(KEYS.PURCHASES, JSON.stringify([]));
   localStorage.setItem(KEYS.ADJUSTMENTS, JSON.stringify([]));
 
+  // Retain admin users (Admin1 and haroldo90) with clean slate
+  const adminUsers = SAMPLE_USERS.filter(u => u.role === 'Admin');
+  localStorage.setItem(KEYS.USERS, JSON.stringify(adminUsers));
+  localStorage.setItem(KEYS.CURRENT_USER, JSON.stringify(adminUsers[0]));
+
   window.dispatchEvent(new Event('papeleria_data_change'));
 }
 
 // RESTORE SAMPLE DATA (For demo testing if desired)
 export function restoreSampleData(): void {
   localStorage.removeItem(KEYS.SAMPLE_CLEARED);
-  localStorage.setItem(KEYS.PRODUCTS, JSON.stringify(SAMPLE_PRODUCTS));
+  localStorage.setItem(KEYS.PRODUCTS, JSON.stringify(SAMPLE_PRODUCTS.map(p => ({ ...p, isActive: true }))));
   localStorage.setItem(KEYS.SERVICES, JSON.stringify(SAMPLE_SERVICES));
   localStorage.setItem(KEYS.SALES, JSON.stringify(SAMPLE_SALES));
   localStorage.setItem(KEYS.SHIFTS, JSON.stringify([INITIAL_CASH_SHIFT]));
   localStorage.setItem(KEYS.PURCHASES, JSON.stringify(SAMPLE_PURCHASES));
   localStorage.setItem(KEYS.ADJUSTMENTS, JSON.stringify([]));
+  localStorage.setItem(KEYS.USERS, JSON.stringify(SAMPLE_USERS));
+  localStorage.setItem(KEYS.CURRENT_USER, JSON.stringify(SAMPLE_USERS[0]));
 
   window.dispatchEvent(new Event('papeleria_data_change'));
 }
