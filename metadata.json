@@ -1,0 +1,6 @@
+{
+  "name": "Papelería El Escritorio",
+  "description": "Sistema de Punto de Venta (POS) e inventario para papelería con escaneo de código de barras, venta de servicios rápidos, cortes de caja X y Z, control de existencias y reportes.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
