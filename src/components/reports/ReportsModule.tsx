@@ -102,10 +102,10 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
       <div className="p-4 sm:p-6 bg-white border-b border-gray-200">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl sm:text-2xl font-black text-[#1F4461] tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-black text-[#1F4461] tracking-tight">
               Reportes Esenciales & Ganancias
             </h1>
-            <p className="text-xs text-gray-500 mt-0.5">
+            <p className="text-xs sm:text-sm text-gray-500 mt-1 font-medium">
               Análisis financiero, margen bruto estimado y rotación de mercancía
             </p>
           </div>
@@ -116,10 +116,10 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition capitalize cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition capitalize cursor-pointer ${
                   period === p
-                    ? 'bg-[#1F4461] text-white shadow-xs'
-                    : 'text-gray-600 hover:text-gray-900'
+                    ? 'bg-[#1F4461] text-white shadow-xs font-bold'
+                    : 'text-gray-700 hover:text-gray-900'
                 }`}
               >
                 {p === 'hoy'
@@ -136,19 +136,19 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
       </div>
 
       {/* Main Content */}
-      <div className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-6">
+      <div className="flex-1 p-4 sm:p-6 overflow-y-auto space-y-5">
         {/* KPI Cards */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           {/* Total Revenue */}
-          <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-[#1F4461] to-[#163248] text-white shadow-md">
+          <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-br from-[#1F4461] to-[#163248] text-white shadow-sm">
             <div className="flex items-center justify-between text-gray-300 mb-2">
               <span className="text-xs uppercase font-bold tracking-wider">Ventas Totales</span>
-              <DollarSign className="w-4 h-4 text-[#9CC55B]" />
+              <DollarSign className="w-4.5 h-4.5 text-[#9CC55B]" />
             </div>
             <span className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-white">
               ${totalRevenue.toFixed(2)}
             </span>
-            <p className="text-xs text-gray-300 mt-2 font-medium">
+            <p className="text-xs text-gray-300 mt-1.5 font-medium">
               {filteredSales.length} transacciones registradas
             </p>
           </div>
@@ -157,12 +157,12 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           <div className="p-4 sm:p-5 rounded-2xl bg-white border border-gray-200 shadow-xs">
             <div className="flex items-center justify-between text-gray-500 mb-2">
               <span className="text-xs uppercase font-bold tracking-wider">Ganancia Bruta Estimada</span>
-              <TrendingUp className="w-4 h-4 text-[#9CC55B]" />
+              <TrendingUp className="w-4.5 h-4.5 text-[#9CC55B]" />
             </div>
             <span className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-emerald-700">
               ${estimatedGrossProfit.toFixed(2)}
             </span>
-            <p className="text-xs text-emerald-800 font-bold mt-2">
+            <p className="text-xs text-emerald-800 font-bold mt-1.5">
               Margen de ganancia: {profitMarginPercent}%
             </p>
           </div>
@@ -171,36 +171,36 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
           <div className="p-4 sm:p-5 rounded-2xl bg-white border border-gray-200 shadow-xs">
             <div className="flex items-center justify-between text-gray-500 mb-2">
               <span className="text-xs uppercase font-bold tracking-wider">Costo Mercancía Vendida</span>
-              <Package className="w-4 h-4 text-gray-400" />
+              <Package className="w-4.5 h-4.5 text-gray-400" />
             </div>
             <span className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-gray-800">
               ${totalCost.toFixed(2)}
             </span>
-            <p className="text-xs text-gray-400 mt-2">Costo base a proveedores</p>
+            <p className="text-xs text-gray-500 mt-1.5 font-medium">Costo base a proveedores</p>
           </div>
 
           {/* Payment Method Distribution */}
           <div className="p-4 sm:p-5 rounded-2xl bg-white border border-gray-200 shadow-xs">
-            <span className="text-xs uppercase font-bold tracking-wider text-gray-500 block mb-2">
+            <span className="text-xs uppercase font-bold tracking-wider text-gray-600 block mb-2">
               Desglose de Cobro
             </span>
-            <div className="space-y-1.5 text-xs">
+            <div className="space-y-2 text-sm font-semibold">
               <div className="flex justify-between items-center">
-                <span className="flex items-center gap-1.5 text-gray-600">
-                  <Banknote className="w-3.5 h-3.5 text-emerald-600" />
+                <span className="flex items-center gap-2 text-gray-600">
+                  <Banknote className="w-4 h-4 text-emerald-600" />
                   Efectivo:
                 </span>
-                <span className="font-mono font-bold text-gray-900">${cashSalesTotal.toFixed(2)}</span>
+                <span className="font-mono font-black text-gray-900 text-base">${cashSalesTotal.toFixed(2)}</span>
               </div>
               <div className="flex justify-between items-center">
-                <span className="flex items-center gap-1.5 text-gray-600">
-                  <CreditCard className="w-3.5 h-3.5 text-blue-600" />
+                <span className="flex items-center gap-2 text-gray-600">
+                  <CreditCard className="w-4 h-4 text-blue-600" />
                   Tarjeta:
                 </span>
-                <span className="font-mono font-bold text-gray-900">${cardSalesTotal.toFixed(2)}</span>
+                <span className="font-mono font-black text-gray-900 text-base">${cardSalesTotal.toFixed(2)}</span>
               </div>
             </div>
-            <div className="w-full bg-gray-100 rounded-full h-1.5 mt-3 overflow-hidden flex">
+            <div className="w-full bg-gray-100 rounded-full h-2 mt-3.5 overflow-hidden flex">
               <div
                 className="bg-emerald-500 h-full"
                 style={{ width: `${totalRevenue > 0 ? (cashSalesTotal / totalRevenue) * 100 : 50}%` }}

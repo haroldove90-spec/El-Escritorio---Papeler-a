@@ -269,20 +269,20 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
       <div className="p-4 sm:p-6 bg-white border-b border-gray-200">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl sm:text-2xl font-black text-[#1F4461] tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-black text-[#1F4461] tracking-tight">
               Catálogo e Inventario
             </h1>
-            <p className="text-xs text-gray-500 mt-0.5">
+            <p className="text-xs sm:text-sm text-gray-500 mt-1 font-medium">
               Control de existencias, código de barras, piezas, paquetes y activación de productos
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <button
               onClick={openCreateModal}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#1F4461] hover:bg-[#163248] text-white font-bold text-xs shadow-md transition cursor-pointer active:scale-95"
+              className="flex items-center gap-2 px-4.5 py-2.5 rounded-xl bg-[#1F4461] hover:bg-[#163248] text-white font-bold text-sm sm:text-base shadow-xs transition cursor-pointer active:scale-95"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-4.5 h-4.5" />
               <span>Nuevo Producto</span>
             </button>
           </div>
@@ -291,27 +291,27 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
         {/* Filters and Search */}
         <div className="mt-4 flex flex-col md:flex-row gap-3">
           <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Search className="w-4.5 h-4.5 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               placeholder="Buscar por nombre, marca o código de barras..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 rounded-xl bg-gray-50 border border-gray-200 focus:bg-white focus:border-[#1F4461] text-xs font-medium outline-none"
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 focus:bg-white focus:border-[#1F4461] text-sm font-medium outline-none transition"
             />
           </div>
 
-          <div className="flex items-center gap-2 overflow-x-auto">
+          <div className="flex items-center gap-2.5 overflow-x-auto">
             {/* Status Filter */}
             <div className="flex items-center gap-1 bg-gray-100 p-1 rounded-xl">
               {(['todos', 'activos', 'inactivos'] as const).map((st) => (
                 <button
                   key={st}
                   onClick={() => setStatusFilter(st)}
-                  className={`px-2.5 py-1 rounded-lg text-xs font-semibold capitalize transition cursor-pointer ${
+                  className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold capitalize transition cursor-pointer ${
                     statusFilter === st
                       ? 'bg-white text-[#1F4461] shadow-xs font-bold'
-                      : 'text-gray-500 hover:text-gray-900'
+                      : 'text-gray-600 hover:text-gray-900'
                   }`}
                 >
                   {st}
@@ -322,7 +322,7 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 text-xs font-semibold text-gray-700 outline-none cursor-pointer"
+              className="px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 text-xs sm:text-sm font-bold text-gray-800 outline-none cursor-pointer"
             >
               {categories.map((c) => (
                 <option key={c} value={c} className="capitalize">
@@ -333,13 +333,13 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
 
             <button
               onClick={() => setStockFilter(stockFilter === 'bajo' ? 'todos' : 'bajo')}
-              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold border transition cursor-pointer whitespace-nowrap ${
+              className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs sm:text-sm font-bold border transition cursor-pointer whitespace-nowrap ${
                 stockFilter === 'bajo'
-                  ? 'bg-amber-500 text-white border-amber-600'
+                  ? 'bg-amber-500 text-white border-amber-600 shadow-xs font-bold'
                   : 'bg-white text-gray-700 border-gray-200 hover:bg-gray-50'
               }`}
             >
-              <AlertTriangle className="w-3.5 h-3.5" />
+              <AlertTriangle className="w-4 h-4" />
               <span>Stock Bajo ({lowStockProductsCount})</span>
             </button>
           </div>
@@ -393,15 +393,15 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
 
         <div className="bg-white rounded-2xl border border-gray-200 shadow-xs overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-gray-700">
-              <thead className="bg-gray-50 border-b border-gray-200 text-gray-500 uppercase tracking-wider font-bold">
+            <table className="w-full text-left text-sm text-gray-700">
+              <thead className="bg-gray-50 border-b border-gray-200 text-gray-600 uppercase tracking-wider font-bold text-xs">
                 <tr>
-                  <th className="py-3 px-3 text-center w-10">
+                  <th className="py-3 px-3.5 text-center w-11">
                     <input
                       type="checkbox"
                       checked={allFilteredSelected && filteredProducts.length > 0}
                       onChange={handleToggleSelectAll}
-                      className="w-4 h-4 rounded text-[#1F4461] cursor-pointer"
+                      className="w-4.5 h-4.5 rounded text-[#1F4461] cursor-pointer"
                       title="Seleccionar todos los productos visibles"
                     />
                   </th>
@@ -419,7 +419,7 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
               <tbody className="divide-y divide-gray-100">
                 {filteredProducts.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="py-12 text-center text-gray-400">
+                    <td colSpan={10} className="py-12 text-center text-gray-500 font-medium text-base">
                       No se encontraron productos con los filtros seleccionados.
                     </td>
                   </tr>
@@ -432,64 +432,64 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                     return (
                       <tr
                         key={prod.id}
-                        className={`transition ${isSelected ? 'bg-[#1F4461]/5' : 'hover:bg-gray-50/80'}`}
+                        className={`transition ${isSelected ? 'bg-[#1F4461]/5' : 'hover:bg-gray-50/90'}`}
                       >
-                        <td className="py-3 px-3 text-center">
+                        <td className="py-3 px-3.5 text-center">
                           <input
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => handleToggleSelectProduct(prod.id)}
-                            className="w-4 h-4 rounded text-[#1F4461] cursor-pointer"
+                            className="w-4.5 h-4.5 rounded text-[#1F4461] cursor-pointer"
                             title={`Seleccionar ${prod.name}`}
                           />
                         </td>
                         <td className="py-3 px-4">
-                          <p className="font-bold text-gray-900">{prod.name}</p>
-                          <div className="flex items-center gap-1 text-[11px] font-mono text-gray-400 mt-0.5">
-                            <Barcode className="w-3.5 h-3.5" />
+                          <p className="font-bold text-gray-900 text-sm sm:text-base">{prod.name}</p>
+                          <div className="flex items-center gap-1.5 text-xs font-mono text-gray-500 mt-0.5">
+                            <Barcode className="w-3.5 h-3.5 text-gray-400" />
                             <span>{prod.barcode}</span>
                           </div>
                         </td>
                         <td className="py-3 px-4">
-                          <span className="font-semibold text-gray-800">{prod.category}</span>
-                          <span className="block text-[11px] text-gray-400">{prod.brand || '—'}</span>
+                          <span className="font-bold text-gray-800 text-sm">{prod.category}</span>
+                          <span className="block text-xs text-gray-500 font-medium">{prod.brand || '—'}</span>
                         </td>
                         <td className="py-3 px-4 text-center">
                           {prod.unitType === 'paquete' ? (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 text-[11px] font-bold">
-                              <Package className="w-3 h-3" />
+                            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-50 text-blue-800 text-xs font-bold">
+                              <Package className="w-3.5 h-3.5" />
                               <span>Paq. ({prod.packageUnits} pz)</span>
                             </span>
                           ) : (
-                            <span className="px-2 py-0.5 rounded-full bg-gray-100 text-gray-600 text-[11px]">
+                            <span className="px-2.5 py-1 rounded-full bg-gray-100 text-gray-700 text-xs font-medium">
                               Pieza suelta
                             </span>
                           )}
                         </td>
-                        <td className="py-3 px-4 text-right font-mono text-gray-600">
+                        <td className="py-3 px-4 text-right font-mono font-medium text-gray-600 text-sm">
                           ${prod.costPrice.toFixed(2)}
                         </td>
-                        <td className="py-3 px-4 text-right font-mono font-bold text-[#1F4461]">
+                        <td className="py-3 px-4 text-right font-mono font-bold text-[#1F4461] text-sm sm:text-base">
                           ${prod.salePrice.toFixed(2)}
                         </td>
                         <td className="py-3 px-4 text-center">
-                          <span className="px-1.5 py-0.5 rounded bg-emerald-50 text-emerald-700 font-bold text-[11px]">
+                          <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 font-bold text-xs font-mono">
                             +{margin}%
                           </span>
                         </td>
                         <td className="py-3 px-4 text-center">
                           <div className="flex flex-col items-center">
                             <span
-                              className={`px-2.5 py-1 rounded-full text-xs font-bold font-mono ${
+                              className={`px-3 py-0.5 rounded-full text-xs font-bold font-mono ${
                                 isLowStock
-                                  ? 'bg-amber-100 text-amber-800 border border-amber-300 animate-pulse'
+                                  ? 'bg-amber-100 text-amber-900 border border-amber-300 animate-pulse'
                                   : 'bg-emerald-50 text-emerald-800'
                               }`}
                             >
                               {prod.stock} pzas
                             </span>
                             {isLowStock && (
-                              <span className="text-[10px] text-amber-700 font-medium mt-0.5">
+                              <span className="text-[11px] text-amber-800 font-bold mt-0.5">
                                 Min: {prod.minStock}
                               </span>
                             )}
@@ -500,14 +500,14 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                         <td className="py-3 px-4 text-center">
                           <button
                             onClick={() => handleToggleProductActive(prod)}
-                            className={`px-2.5 py-1 rounded-full text-[11px] font-bold transition cursor-pointer flex items-center gap-1 mx-auto ${
+                            className={`px-2.5 py-1 rounded-full text-xs font-bold transition cursor-pointer flex items-center gap-1 mx-auto ${
                               prod.isActive !== false
-                                ? 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                                : 'bg-gray-100 text-gray-400 hover:bg-gray-200'
+                                ? 'bg-emerald-50 text-emerald-800 hover:bg-emerald-100'
+                                : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
                             }`}
                             title="Haz clic para activar o desactivar este producto"
                           >
-                            <Power className="w-3 h-3" />
+                            <Power className="w-3.5 h-3.5" />
                             <span>{prod.isActive !== false ? 'Activo' : 'Inactivo'}</span>
                           </button>
                         </td>
@@ -518,27 +518,27 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                             <button
                               onClick={() => setViewingProduct(prod)}
                               title="Ver detalles completos del producto"
-                              className="p-1.5 rounded-lg text-gray-500 hover:text-[#1F4461] hover:bg-gray-100 transition cursor-pointer"
+                              className="p-2.5 rounded-xl text-gray-500 hover:text-[#1F4461] hover:bg-gray-100 transition cursor-pointer"
                             >
-                              <Eye className="w-4 h-4" />
+                              <Eye className="w-5 h-5" />
                             </button>
 
                             {/* Ajuste manual */}
                             <button
                               onClick={() => openAdjustStockModal(prod)}
                               title="Ajuste rápido de stock (Merma/Dañado/Uso interno)"
-                              className="p-1.5 rounded-lg text-gray-500 hover:text-amber-700 hover:bg-amber-50 transition cursor-pointer"
+                              className="p-2.5 rounded-xl text-gray-500 hover:text-amber-700 hover:bg-amber-50 transition cursor-pointer"
                             >
-                              <SlidersHorizontal className="w-4 h-4" />
+                              <SlidersHorizontal className="w-5 h-5" />
                             </button>
 
                             {/* Editar */}
                             <button
                               onClick={() => openEditModal(prod)}
                               title="Editar producto"
-                              className="p-1.5 rounded-lg text-gray-500 hover:text-[#1F4461] hover:bg-blue-50 transition cursor-pointer"
+                              className="p-2.5 rounded-xl text-gray-500 hover:text-[#1F4461] hover:bg-blue-50 transition cursor-pointer"
                             >
-                              <Edit2 className="w-4 h-4" />
+                              <Edit2 className="w-5 h-5" />
                             </button>
 
                             {/* Borrar */}
@@ -549,9 +549,9 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                                 }
                               }}
                               title="Eliminar producto"
-                              className="p-1.5 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer"
+                              className="p-2.5 rounded-xl text-gray-400 hover:text-red-600 hover:bg-red-50 transition cursor-pointer"
                             >
-                              <Trash2 className="w-4 h-4" />
+                              <Trash2 className="w-5 h-5" />
                             </button>
                           </div>
                         </td>

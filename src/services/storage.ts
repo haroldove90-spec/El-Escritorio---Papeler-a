@@ -74,11 +74,12 @@ export function getUsers(): UserAccount[] {
     const raw = localStorage.getItem(KEYS.USERS);
     if (raw) {
       const list: UserAccount[] = JSON.parse(raw);
-      // Ensure Admin1 and haroldo90 are present in the list
+      // Ensure Admin1, haroldo90, and cajero1 are present in the list
       const hasAdmin1 = list.some((u) => u.username.toLowerCase() === 'admin1');
       const hasHaroldo = list.some((u) => u.username.toLowerCase() === 'haroldo90');
+      const hasCajero1 = list.some((u) => u.username.toLowerCase() === 'cajero1');
 
-      if (!hasAdmin1 || !hasHaroldo) {
+      if (!hasAdmin1 || !hasHaroldo || !hasCajero1) {
         const merged = [...list];
         if (!hasAdmin1) {
           const adm1 = SAMPLE_USERS.find((u) => u.username === 'Admin1');
@@ -87,6 +88,10 @@ export function getUsers(): UserAccount[] {
         if (!hasHaroldo) {
           const har = SAMPLE_USERS.find((u) => u.username === 'haroldo90');
           if (har) merged.push(har);
+        }
+        if (!hasCajero1) {
+          const caj = SAMPLE_USERS.find((u) => u.username === 'cajero1');
+          if (caj) merged.push(caj);
         }
         saveUsers(merged);
         return merged;
@@ -134,22 +139,19 @@ export function getProducts(): Product[] {
     const raw = localStorage.getItem(KEYS.PRODUCTS);
     if (raw) {
       const parsed: Product[] = JSON.parse(raw);
-      return parsed.map(p => ({
-        ...p,
-        isActive: p.isActive !== false,
-      }));
+      if (parsed && parsed.length > 0) {
+        return parsed.map((p) => ({
+          ...p,
+          isActive: p.isActive !== false,
+        }));
+      }
     }
   } catch (e) {
     console.error('Error parsing products', e);
   }
 
-  // If user previously chose to clear sample data, do not restore sample products!
-  if (isSampleDataCleared()) {
-    return [];
-  }
-
-  // Otherwise, load default sample products with isActive: true
-  const initial = SAMPLE_PRODUCTS.map(p => ({ ...p, isActive: true }));
+  // Load default sample products with isActive: true so catalog is never empty
+  const initial = SAMPLE_PRODUCTS.map((p) => ({ ...p, isActive: true }));
   saveProducts(initial);
   return initial;
 }
@@ -165,17 +167,15 @@ export function getServices(): ServiceItem[] {
     const raw = localStorage.getItem(KEYS.SERVICES);
     if (raw) {
       const parsed: ServiceItem[] = JSON.parse(raw);
-      return parsed.map(s => ({
-        ...s,
-        isActive: s.isActive !== false,
-      }));
+      if (parsed && parsed.length > 0) {
+        return parsed.map((s) => ({
+          ...s,
+          isActive: s.isActive !== false,
+        }));
+      }
     }
   } catch (e) {
     console.error('Error parsing services', e);
-  }
-
-  if (isSampleDataCleared()) {
-    return [];
   }
 
   saveServices(SAMPLE_SERVICES);
@@ -294,10 +294,9 @@ export function clearAllSampleData(): void {
   localStorage.setItem(KEYS.PURCHASES, JSON.stringify([]));
   localStorage.setItem(KEYS.ADJUSTMENTS, JSON.stringify([]));
 
-  // Retain admin users (Admin1 and haroldo90) with clean slate
-  const adminUsers = SAMPLE_USERS.filter(u => u.role === 'Admin');
-  localStorage.setItem(KEYS.USERS, JSON.stringify(adminUsers));
-  localStorage.setItem(KEYS.CURRENT_USER, JSON.stringify(adminUsers[0]));
+  // Retain primary system accounts (Admin1, haroldo90, cajero1)
+  localStorage.setItem(KEYS.USERS, JSON.stringify(SAMPLE_USERS));
+  localStorage.setItem(KEYS.CURRENT_USER, JSON.stringify(SAMPLE_USERS[0]));
 
   window.dispatchEvent(new Event('papeleria_data_change'));
 }

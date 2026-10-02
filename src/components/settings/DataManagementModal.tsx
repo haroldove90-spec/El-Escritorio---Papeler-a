@@ -55,6 +55,7 @@ export const DataManagementModal: React.FC<DataManagementModalProps> = ({
   const [isSyncing, setIsSyncing] = useState(false);
   const [showSqlSchema, setShowSqlSchema] = useState(false);
   const [copiedSql, setCopiedSql] = useState(false);
+  const [copiedRlsSql, setCopiedRlsSql] = useState(false);
 
   if (!isOpen) return null;
 
@@ -143,10 +144,41 @@ export const DataManagementModal: React.FC<DataManagementModalProps> = ({
 
   const sqlSchemaText = FULL_SUPABASE_SQL_WITH_SAMPLE_DATA;
 
+  const RLS_FIX_SQL = `-- ==============================================================================
+-- SOLUCIÓN INMEDIATA PARA ERROR "ROW-LEVEL SECURITY POLICY" EN SUPABASE
+-- Ejecuta este comando en Supabase > SQL Editor para permitir lectura/escritura
+-- ==============================================================================
+ALTER TABLE IF EXISTS users DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS sales DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS sale_items DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS products DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS services DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS cash_shifts DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS cash_movements DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS purchases DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS purchase_items DISABLE ROW LEVEL SECURITY;
+ALTER TABLE IF EXISTS stock_adjustments DISABLE ROW LEVEL SECURITY;
+
+DO $$
+DECLARE
+  t text;
+BEGIN
+  FOR t IN SELECT tablename FROM pg_tables WHERE schemaname = 'public' LOOP
+    EXECUTE format('DROP POLICY IF EXISTS "anon_full_access" ON %I;', t);
+    EXECUTE format('CREATE POLICY "anon_full_access" ON %I FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);', t);
+  END LOOP;
+END $$;`;
+
   const copySqlToClipboard = () => {
     navigator.clipboard.writeText(sqlSchemaText);
     setCopiedSql(true);
     setTimeout(() => setCopiedSql(false), 2000);
+  };
+
+  const copyRlsSqlToClipboard = () => {
+    navigator.clipboard.writeText(RLS_FIX_SQL);
+    setCopiedRlsSql(true);
+    setTimeout(() => setCopiedRlsSql(false), 2500);
   };
 
   return (
@@ -323,6 +355,28 @@ export const DataManagementModal: React.FC<DataManagementModalProps> = ({
               >
                 <Trash2 className="w-3.5 h-3.5" />
                 <span>Borrar en Supabase</span>
+              </button>
+            </div>
+
+            {/* RLS Solution Card */}
+            <div className="p-3.5 rounded-xl bg-amber-50/80 border border-amber-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+              <div className="flex items-start gap-2.5">
+                <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-amber-900">
+                    ¿Error "violates row-level security policy" en Supabase?
+                  </p>
+                  <p className="text-[11px] text-amber-700 mt-0.5">
+                    Ejecuta este comando en Supabase &gt; SQL Editor para desactivar RLS y autorizar la API Key.
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={copyRlsSqlToClipboard}
+                className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-700 text-white font-bold text-xs flex items-center justify-center gap-1.5 transition cursor-pointer shadow-xs shrink-0"
+              >
+                {copiedRlsSql ? <Check className="w-3.5 h-3.5" /> : <Copy className="w-3.5 h-3.5" />}
+                <span>{copiedRlsSql ? '¡Copiado!' : 'Copiar Solución RLS'}</span>
               </button>
             </div>
 

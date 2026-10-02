@@ -42,6 +42,7 @@ import {
   syncUserToSupabase,
   deleteUserFromSupabase,
   deleteMultipleUsersFromSupabase,
+  syncAdjustmentToSupabase,
 } from './services/supabaseClient';
 import { RoleSelector } from './components/RoleSelector';
 import { Header } from './components/Header';
@@ -67,8 +68,12 @@ export default function App() {
     return session?.user?.role || localStorage.getItem('papeleria_active_role') || null;
   });
 
-  // Active module
-  const [activeModule, setActiveModule] = useState<ActiveModule>('pos');
+  // Active module: Admin defaults to 'inventory', Cajero defaults to 'pos'
+  const [activeModule, setActiveModule] = useState<ActiveModule>(() => {
+    const session = getAuthSession();
+    if (session?.user?.role === 'Admin') return 'inventory';
+    return 'pos';
+  });
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   // App State
@@ -122,6 +127,21 @@ export default function App() {
     };
   }, []);
 
+  // Ensure active module corresponds to user's permitted role
+  useEffect(() => {
+    if (currentRole === 'Admin' && activeModule === 'pos') {
+      setActiveModule('inventory');
+    } else if (
+      currentRole === 'Cajero' &&
+      (activeModule === 'inventory' ||
+        activeModule === 'purchases' ||
+        activeModule === 'reports' ||
+        activeModule === 'employees')
+    ) {
+      setActiveModule('pos');
+    }
+  }, [currentRole, activeModule]);
+
   // Handle successful credential login
   const handleLoginSuccess = (user: UserAccount) => {
     saveAuthSession(user);
@@ -132,7 +152,8 @@ export default function App() {
     });
     setCurrentUser(user);
     setCurrentRole(user.role);
-    setActiveModule('pos');
+    // Admin goes to Inventory, Cajero goes directly to POS
+    setActiveModule(user.role === 'Admin' ? 'inventory' : 'pos');
   };
 
   // Handle explicit logout
@@ -152,7 +173,7 @@ export default function App() {
     saveSales(updatedSales);
 
     // Sync to Supabase in background
-    syncSaleToSupabase(newSale).catch((e) => console.warn('Supabase sale sync error', e));
+    syncSaleToSupabase(newSale).catch(() => {});
 
     // Update active shift sales totals
     if (activeShift) {
@@ -172,7 +193,7 @@ export default function App() {
           };
 
           // Sync shift to Supabase
-          syncCashShiftToSupabase(updatedShiftObj).catch((e) => console.warn('Supabase shift sync error', e));
+          syncCashShiftToSupabase(updatedShiftObj).catch(() => {});
 
           return updatedShiftObj;
         }
@@ -201,7 +222,7 @@ export default function App() {
     saveProducts(updatedProducts);
 
     if (affectedProduct) {
-      syncProductToSupabase(affectedProduct).catch((e) => console.warn('Supabase stock sync error', e));
+      syncProductToSupabase(affectedProduct).catch(() => {});
     }
   };
 
@@ -219,7 +240,7 @@ export default function App() {
     saveProducts(updated);
 
     // Sync to Supabase
-    syncProductToSupabase(product).catch((e) => console.warn('Supabase product sync error', e));
+    syncProductToSupabase(product).catch(() => {});
   };
 
   // Inventory: Delete Single Product
@@ -229,7 +250,7 @@ export default function App() {
     saveProducts(updated);
 
     // Delete in Supabase
-    deleteProductFromSupabase(productId).catch((e) => console.warn('Supabase delete error', e));
+    deleteProductFromSupabase(productId).catch(() => {});
   };
 
   // Inventory: Delete Multiple Products (Bulk)
@@ -240,7 +261,7 @@ export default function App() {
     saveProducts(updated);
 
     // Delete in Supabase
-    deleteMultipleProductsFromSupabase(productIds).catch((e) => console.warn('Supabase bulk delete error', e));
+    deleteMultipleProductsFromSupabase(productIds).catch(() => {});
   };
 
   // Inventory: Manual Stock Adjustment (Merma, dañado, uso interno)
@@ -265,8 +286,9 @@ export default function App() {
     saveProducts(updatedProducts);
 
     if (changedProduct) {
-      syncProductToSupabase(changedProduct).catch((e) => console.warn('Supabase adjust sync error', e));
+      syncProductToSupabase(changedProduct).catch(() => {});
     }
+    syncAdjustmentToSupabase(adjustment).catch(() => {});
   };
 
   // Purchases: Save Purchase & Update Product Stocks
@@ -297,7 +319,7 @@ export default function App() {
     saveProducts(updatedProducts);
 
     // Sync purchase to Supabase
-    syncPurchaseToSupabase(newPurchase).catch((e) => console.warn('Supabase purchase sync error', e));
+    syncPurchaseToSupabase(newPurchase).catch(() => {});
   };
 
   // Purchases: Delete Multiple Purchases
@@ -307,7 +329,7 @@ export default function App() {
     setPurchases(updated);
     savePurchases(updated);
 
-    deleteMultiplePurchasesFromSupabase(purchaseIds).catch((e) => console.warn('Supabase purchase delete error', e));
+    deleteMultiplePurchasesFromSupabase(purchaseIds).catch(() => {});
   };
 
   // Cash: Open shift
@@ -484,7 +506,7 @@ export default function App() {
         onLogout={handleLogout}
         onOpenDataSettings={() => setIsDataModalOpen(true)}
         onOpenCashModal={() => setActiveModule('cash')}
-        onOpenProfile={currentRole === 'Admin' ? () => setActiveModule('profile') : undefined}
+        onOpenProfile={() => setActiveModule('profile')}
       />
 
       {/* Main Workspace: Desktop Sidebar + Active Module Container */}
@@ -501,7 +523,7 @@ export default function App() {
 
         {/* Dynamic Module Rendering */}
         <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative bg-gray-50">
-          {activeModule === 'pos' && (
+          {activeModule === 'pos' && currentRole === 'Cajero' && (
             <PosModule
               products={products}
               services={services}
@@ -557,7 +579,7 @@ export default function App() {
             />
           )}
 
-          {activeModule === 'profile' && currentRole === 'Admin' && (
+          {activeModule === 'profile' && (
             <ProfileModule
               currentUser={currentUser}
               onUpdateProfile={handleUpdateProfile}

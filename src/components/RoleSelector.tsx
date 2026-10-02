@@ -73,49 +73,49 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
         <PWAInstallButton />
         <button
           onClick={onOpenDataSettings}
-          className="text-xs font-semibold text-gray-500 hover:text-[#1F4461] px-3.5 py-1.5 rounded-xl border border-gray-200 bg-white/70 hover:bg-white transition cursor-pointer shadow-xs"
+          className="text-sm font-bold text-gray-600 hover:text-[#1F4461] px-4 py-2 rounded-xl border border-gray-200 bg-white/80 hover:bg-white transition cursor-pointer shadow-xs"
         >
           Base de Datos & Supabase
         </button>
       </div>
 
       {/* Main Center Section */}
-      <div className="max-w-md w-full mx-auto my-auto flex flex-col items-center">
+      <div className="max-w-lg w-full mx-auto my-auto flex flex-col items-center">
         {/* Full Size Unencapsulated Logo */}
-        <div className="mb-6 flex justify-center w-full">
+        <div className="mb-7 flex justify-center w-full">
           <img
             src="https://appdesignproyectos.com/papelerialogo.png"
             alt="Papelería El Escritorio"
-            className="w-full max-w-[320px] sm:max-w-[400px] h-auto object-contain filter drop-shadow-sm transition-transform duration-300 hover:scale-[1.01]"
+            className="w-full max-w-[340px] sm:max-w-[420px] h-auto object-contain filter drop-shadow-sm transition-transform duration-300 hover:scale-[1.01]"
           />
         </div>
 
         {/* Login Card */}
         <div className="w-full bg-white rounded-3xl p-6 sm:p-8 shadow-xl shadow-[#1F4461]/8 border border-gray-100">
           <div className="text-center mb-6">
-            <h2 className="text-xl sm:text-2xl font-black text-[#1F4461] tracking-tight">
+            <h2 className="text-2xl sm:text-3xl font-black text-[#1F4461] tracking-tight">
               Iniciar Sesión
             </h2>
-            <p className="text-xs text-gray-500 mt-1">
+            <p className="text-sm sm:text-base text-gray-600 mt-1 font-medium">
               Ingresa tus credenciales para acceder al Punto de Venta
             </p>
           </div>
 
           {errorMessage && (
-            <div className="mb-4 p-3 rounded-xl bg-red-50 border border-red-200 text-red-700 text-xs font-medium flex items-center gap-2 animate-in fade-in">
-              <AlertCircle className="w-4 h-4 shrink-0 text-red-600" />
+            <div className="mb-5 p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 text-sm font-semibold flex items-center gap-2.5 animate-in fade-in">
+              <AlertCircle className="w-5 h-5 shrink-0 text-red-600" />
               <span>{errorMessage}</span>
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
             {/* Username */}
             <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">
+              <label className="block text-sm font-bold text-gray-800 mb-1.5">
                 Usuario:
               </label>
               <div className="relative">
-                <User className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <User className="w-4.5 h-4.5 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   required
@@ -123,19 +123,19 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
                   autoComplete="username"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Ej: Admin1 o haroldo90"
-                  className="w-full pl-10 pr-4 py-2.5 rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:border-[#1F4461] text-xs font-semibold text-gray-800 outline-none transition"
+                  placeholder="Ej: Admin1 o haroldo90 o cajero1"
+                  className="w-full pl-10 pr-4 py-2.5 sm:py-3 rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:border-[#1F4461] text-sm sm:text-base font-semibold text-gray-900 outline-none transition shadow-2xs"
                 />
               </div>
             </div>
 
             {/* Password with Eye Toggle */}
             <div>
-              <label className="block text-xs font-bold text-gray-700 mb-1">
+              <label className="block text-sm font-bold text-gray-800 mb-1.5">
                 Contraseña:
               </label>
               <div className="relative">
-                <Lock className="w-4 h-4 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <Lock className="w-4.5 h-4.5 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   required
@@ -143,29 +143,29 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
-                  className="w-full pl-10 pr-11 py-2.5 rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:border-[#1F4461] text-xs font-mono text-gray-800 outline-none transition"
+                  className="w-full pl-10 pr-11 py-2.5 sm:py-3 rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:border-[#1F4461] text-sm sm:text-base font-mono text-gray-900 outline-none transition shadow-2xs"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 p-1 cursor-pointer transition"
+                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-700 p-1 cursor-pointer transition"
                   title={showPassword ? 'Ocultar contraseña' : 'Ver contraseña'}
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showPassword ? <EyeOff className="w-4.5 h-4.5" /> : <Eye className="w-4.5 h-4.5" />}
                 </button>
               </div>
             </div>
 
             {/* Remember session checkbox */}
-            <div className="flex items-center justify-between pt-1">
-              <label className="flex items-center gap-2 cursor-pointer select-none">
+            <div className="flex items-center justify-between pt-0.5">
+              <label className="flex items-center gap-2.5 cursor-pointer select-none">
                 <input
                   type="checkbox"
                   checked={rememberSession}
                   onChange={(e) => setRememberSession(e.target.checked)}
-                  className="w-4 h-4 rounded text-[#1F4461] focus:ring-0 cursor-pointer"
+                  className="w-4.5 h-4.5 rounded text-[#1F4461] focus:ring-0 cursor-pointer"
                 />
-                <span className="text-xs text-gray-600 font-medium">
+                <span className="text-sm text-gray-700 font-semibold">
                   Mantener mi sesión iniciada
                 </span>
               </label>
@@ -175,13 +175,13 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
             <button
               type="submit"
               disabled={isLoading}
-              className="w-full py-3 px-4 rounded-xl bg-[#1F4461] hover:bg-[#163248] text-white font-bold text-xs tracking-wide shadow-md shadow-[#1F4461]/20 transition-all cursor-pointer flex items-center justify-center gap-2 active:scale-98"
+              className="w-full py-3 px-4 rounded-xl bg-[#1F4461] hover:bg-[#163248] text-white font-bold text-base tracking-wide shadow-md shadow-[#1F4461]/20 transition-all cursor-pointer flex items-center justify-center gap-2.5 active:scale-98"
             >
               {isLoading ? (
-                <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
               ) : (
                 <>
-                  <LogIn className="w-4 h-4 text-[#9CC55B]" />
+                  <LogIn className="w-5 h-5 text-[#9CC55B]" />
                   <span>Ingresar al Sistema</span>
                 </>
               )}
@@ -190,21 +190,21 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
 
           {/* Activated Credentials Quick Fill Card */}
           <div className="mt-6 pt-5 border-t border-gray-100">
-            <div className="flex items-center gap-1.5 text-[11px] font-bold text-gray-500 uppercase tracking-wider mb-2">
-              <KeyRound className="w-3.5 h-3.5 text-[#1F4461]" />
+            <div className="flex items-center gap-1.5 text-xs font-bold text-gray-700 uppercase tracking-wider mb-2.5">
+              <KeyRound className="w-4 h-4 text-[#1F4461]" />
               <span>Credenciales Activas del Sistema:</span>
             </div>
-            <div className="grid grid-cols-2 gap-2 text-xs">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
               <button
                 type="button"
                 onClick={() => handleQuickFill('Admin1', 'Chevropar#1970')}
-                className="p-2.5 rounded-xl border border-gray-200 bg-gray-50 hover:bg-[#1F4461]/5 hover:border-[#1F4461]/30 text-left transition cursor-pointer group"
+                className="p-3 rounded-xl border border-gray-200 bg-gray-50 hover:bg-[#1F4461]/5 hover:border-[#1F4461]/30 text-left transition cursor-pointer group shadow-2xs"
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-[#1F4461] text-xs">Admin1</span>
-                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-[#1F4461]/10 text-[#1F4461] font-semibold">Admin</span>
+                  <span className="font-bold text-[#1F4461] text-sm">Admin1</span>
+                  <span className="text-[11px] px-2 py-0.5 rounded-md bg-[#1F4461]/10 text-[#1F4461] font-bold">Admin</span>
                 </div>
-                <div className="text-[11px] font-mono text-gray-500 mt-0.5 group-hover:text-gray-700">
+                <div className="text-xs font-mono text-gray-600 mt-1 font-medium group-hover:text-gray-900">
                   Chevropar#1970
                 </div>
               </button>
@@ -212,18 +212,32 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
               <button
                 type="button"
                 onClick={() => handleQuickFill('haroldo90', 'Chevropar#1970')}
-                className="p-2.5 rounded-xl border border-gray-200 bg-gray-50 hover:bg-[#1F4461]/5 hover:border-[#1F4461]/30 text-left transition cursor-pointer group"
+                className="p-3 rounded-xl border border-gray-200 bg-gray-50 hover:bg-[#1F4461]/5 hover:border-[#1F4461]/30 text-left transition cursor-pointer group shadow-2xs"
               >
                 <div className="flex items-center justify-between">
-                  <span className="font-bold text-[#1F4461] text-xs">haroldo90</span>
-                  <span className="text-[10px] px-1.5 py-0.2 rounded bg-[#9CC55B]/20 text-emerald-800 font-semibold">Admin</span>
+                  <span className="font-bold text-[#1F4461] text-sm">haroldo90</span>
+                  <span className="text-[11px] px-2 py-0.5 rounded-md bg-[#9CC55B]/20 text-emerald-800 font-bold">Admin</span>
                 </div>
-                <div className="text-[11px] font-mono text-gray-500 mt-0.5 group-hover:text-gray-700">
+                <div className="text-xs font-mono text-gray-600 mt-1 font-medium group-hover:text-gray-900">
+                  Chevropar#1970
+                </div>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => handleQuickFill('cajero1', 'Chevropar#1970')}
+                className="p-3 rounded-xl border border-amber-200 bg-amber-50/50 hover:bg-amber-100/50 hover:border-amber-400 text-left transition cursor-pointer group shadow-2xs"
+              >
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-amber-900 text-sm">cajero1</span>
+                  <span className="text-[11px] px-2 py-0.5 rounded-md bg-amber-200 text-amber-900 font-bold">Cajero</span>
+                </div>
+                <div className="text-xs font-mono text-gray-600 mt-1 font-medium group-hover:text-gray-900">
                   Chevropar#1970
                 </div>
               </button>
             </div>
-            <p className="text-[11px] text-gray-400 text-center mt-2.5">
+            <p className="text-sm text-gray-500 text-center mt-3.5 font-medium">
               Haz clic en cualquiera para auto-completar e ingresar rápidamente
             </p>
           </div>

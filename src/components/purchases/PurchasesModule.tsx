@@ -149,20 +149,20 @@ export const PurchasesModule: React.FC<PurchasesModuleProps> = ({
       <div className="p-4 sm:p-6 bg-white border-b border-gray-200">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl sm:text-2xl font-black text-[#1F4461] tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-black text-[#1F4461] tracking-tight">
               Compras y Entradas de Mercancía
             </h1>
-            <p className="text-xs text-gray-500 mt-0.5">
+            <p className="text-xs sm:text-sm text-gray-500 mt-1 font-medium">
               Recepción a proveedores con actualización automática de existencias y costos
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <button
               onClick={openNewPurchaseModal}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#1F4461] hover:bg-[#163248] text-white font-bold text-xs shadow-md transition cursor-pointer active:scale-95"
+              className="flex items-center gap-2 px-4.5 py-2.5 rounded-xl bg-[#1F4461] hover:bg-[#163248] text-white font-bold text-sm sm:text-base shadow-xs transition cursor-pointer active:scale-95"
             >
-              <PackagePlus className="w-4 h-4" />
+              <PackagePlus className="w-4.5 h-4.5" />
               <span>Registrar Entrada / Compra</span>
             </button>
           </div>
@@ -172,24 +172,24 @@ export const PurchasesModule: React.FC<PurchasesModuleProps> = ({
         <div className="flex gap-2 mt-4">
           <button
             onClick={() => setActiveTab('compras')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+            className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'compras'
-                ? 'bg-[#1F4461] text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                ? 'bg-[#1F4461] text-white shadow-xs font-bold'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
-            <Truck className="w-3.5 h-3.5" />
+            <Truck className="w-4 h-4" />
             <span>Facturas de Proveedores ({purchases.length})</span>
           </button>
           <button
             onClick={() => setActiveTab('ajustes')}
-            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+            className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer flex items-center gap-1.5 ${
               activeTab === 'ajustes'
-                ? 'bg-[#1F4461] text-white'
-                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                ? 'bg-[#1F4461] text-white shadow-xs font-bold'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
             }`}
           >
-            <History className="w-3.5 h-3.5" />
+            <History className="w-4 h-4" />
             <span>Historial de Mermas y Ajustes ({adjustments.length})</span>
           </button>
         </div>

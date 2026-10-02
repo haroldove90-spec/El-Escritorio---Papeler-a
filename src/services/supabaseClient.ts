@@ -134,12 +134,10 @@ export async function syncProductToSupabase(product: Product): Promise<boolean> 
       last_restock_date: product.lastRestockDate || new Date().toISOString(),
     });
     if (error) {
-      console.warn('Error syncing product to Supabase:', error.message);
       return false;
     }
     return true;
-  } catch (e) {
-    console.warn('Network error syncing product to Supabase', e);
+  } catch {
     return false;
   }
 }
@@ -191,7 +189,6 @@ export async function syncSaleToSupabase(sale: Sale): Promise<boolean> {
       canceled_reason: sale.canceledReason || null,
     });
     if (saleErr) {
-      console.warn('Error syncing sale:', saleErr.message);
       return false;
     }
 
@@ -213,8 +210,7 @@ export async function syncSaleToSupabase(sale: Sale): Promise<boolean> {
       await client.from('sale_items').upsert(itemsPayload);
     }
     return true;
-  } catch (e) {
-    console.warn('Network error syncing sale to Supabase', e);
+  } catch {
     return false;
   }
 }
@@ -310,11 +306,11 @@ export async function deleteMultiplePurchasesFromSupabase(purchaseIds: string[])
 }
 
 // Sync User
-export async function syncUserToSupabase(user: UserAccount): Promise<boolean> {
+export async function syncUserToSupabase(user: UserAccount): Promise<{ success: boolean; error?: string }> {
   const client = getSupabaseClient();
-  if (!client) return false;
+  if (!client) return { success: false, error: 'No hay conexión configurada con Supabase' };
   try {
-    const { error } = await client.from('users').upsert({
+    const payload = {
       id: user.id,
       username: user.username,
       full_name: user.fullName,
@@ -324,10 +320,36 @@ export async function syncUserToSupabase(user: UserAccount): Promise<boolean> {
       password: user.password,
       avatar_url: user.avatarUrl || null,
       identification: user.identification || null,
-      is_active: user.isActive,
-      created_at: user.createdAt,
+      is_active: user.isActive !== false,
+      created_at: user.createdAt || new Date().toISOString(),
       last_login: user.lastLogin || null,
-    });
+    };
+    const { error } = await client.from('users').upsert(payload, { onConflict: 'id' });
+    if (error) {
+      return { success: false, error: error.message };
+    }
+    return { success: true };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : 'Error desconocido al sincronizar usuario';
+    return { success: false, error: msg };
+  }
+}
+
+// Sync Service
+export async function syncServiceToSupabase(service: ServiceItem): Promise<boolean> {
+  const client = getSupabaseClient();
+  if (!client) return false;
+  try {
+    const { error } = await client.from('services').upsert({
+      id: service.id,
+      name: service.name,
+      price: service.price,
+      category: service.category,
+      unit: service.unit,
+      icon_name: service.iconName || 'FileText',
+      description: service.description || null,
+      is_active: service.isActive !== false,
+    }, { onConflict: 'id' });
     return !error;
   } catch {
     return false;
@@ -355,6 +377,88 @@ export async function deleteMultipleUsersFromSupabase(userIds: string[]): Promis
     return !error;
   } catch {
     return false;
+  }
+}
+
+// Sync Stock Adjustment
+export async function syncAdjustmentToSupabase(adj: any): Promise<boolean> {
+  const client = getSupabaseClient();
+  if (!client) return false;
+  try {
+    const { error } = await client.from('stock_adjustments').upsert({
+      id: adj.id,
+      product_id: adj.productId,
+      product_name: adj.productName,
+      barcode: adj.barcode || null,
+      previous_stock: adj.previousStock,
+      new_stock: adj.newStock,
+      quantity_adjusted: adj.quantityAdjusted,
+      reason: adj.reason,
+      notes: adj.notes || null,
+      user_name: adj.user,
+      date: adj.date,
+    });
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+// Fetch Products from Supabase (to restore remote catalog)
+export async function fetchProductsFromSupabase(): Promise<Product[] | null> {
+  const client = getSupabaseClient();
+  if (!client) return null;
+  try {
+    const { data, error } = await client.from('products').select('*');
+    if (error || !data || data.length === 0) return null;
+    return data.map((d: any) => ({
+      id: d.id,
+      barcode: d.barcode,
+      name: d.name,
+      category: d.category,
+      brand: d.brand || '',
+      costPrice: Number(d.cost_price) || 0,
+      salePrice: Number(d.sale_price) || 0,
+      stock: Number(d.stock) || 0,
+      minStock: Number(d.min_stock) || 5,
+      unitType: d.unit_type || 'pieza',
+      packageUnits: Number(d.package_units) || 1,
+      packageCostPrice: d.package_cost_price ? Number(d.package_cost_price) : undefined,
+      packageSalePrice: d.package_sale_price ? Number(d.package_sale_price) : undefined,
+      isActive: d.is_active !== false,
+      isService: !!d.is_service,
+      imageUrl: d.image_url || undefined,
+      createdAt: d.created_at,
+      lastRestockDate: d.last_restock_date,
+    }));
+  } catch {
+    return null;
+  }
+}
+
+// Fetch Users from Supabase
+export async function fetchUsersFromSupabase(): Promise<UserAccount[] | null> {
+  const client = getSupabaseClient();
+  if (!client) return null;
+  try {
+    const { data, error } = await client.from('users').select('*');
+    if (error || !data || data.length === 0) return null;
+    return data.map((d: any) => ({
+      id: d.id,
+      username: d.username,
+      fullName: d.full_name,
+      email: d.email,
+      phone: d.phone || undefined,
+      role: d.role,
+      password: d.password,
+      avatarUrl: d.avatar_url || undefined,
+      identification: d.identification || undefined,
+      isActive: d.is_active !== false,
+      createdAt: d.created_at,
+      lastLogin: d.last_login || undefined,
+    }));
+  } catch {
+    return null;
   }
 }
 

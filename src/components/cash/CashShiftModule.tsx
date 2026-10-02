@@ -132,10 +132,10 @@ export const CashShiftModule: React.FC<CashShiftModuleProps> = ({
       <div className="p-4 sm:p-6 bg-white border-b border-gray-200">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl sm:text-2xl font-black text-[#1F4461] tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-black text-[#1F4461] tracking-tight">
               Control de Caja Chica & Cortes X / Z
             </h1>
-            <p className="text-xs text-gray-500 mt-0.5">
+            <p className="text-xs sm:text-sm text-gray-500 mt-1 font-medium">
               Apertura de turno, arqueo en vivo, gastos de caja chica y cierre definitivo
             </p>
           </div>
@@ -144,24 +144,24 @@ export const CashShiftModule: React.FC<CashShiftModuleProps> = ({
           <div className="flex gap-2">
             <button
               onClick={() => setActiveTab('actual')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+              className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer flex items-center gap-1.5 ${
                 activeTab === 'actual'
-                  ? 'bg-[#1F4461] text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  ? 'bg-[#1F4461] text-white shadow-xs font-bold'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              <Coins className="w-3.5 h-3.5" />
+              <Coins className="w-4 h-4" />
               <span>Turno Actual</span>
             </button>
             <button
               onClick={() => setActiveTab('historial')}
-              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer flex items-center gap-1.5 ${
+              className={`px-3.5 py-2 rounded-xl text-xs sm:text-sm font-bold transition cursor-pointer flex items-center gap-1.5 ${
                 activeTab === 'historial'
-                  ? 'bg-[#1F4461] text-white'
-                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                  ? 'bg-[#1F4461] text-white shadow-xs font-bold'
+                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
               }`}
             >
-              <History className="w-3.5 h-3.5" />
+              <History className="w-4 h-4" />
               <span>Historial de Cortes ({shiftHistory.length})</span>
             </button>
           </div>
@@ -245,10 +245,10 @@ export const CashShiftModule: React.FC<CashShiftModuleProps> = ({
                         type: 'X',
                       })
                     }
-                    className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 text-xs font-bold transition cursor-pointer"
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gray-100 hover:bg-gray-200 text-gray-800 border border-gray-300 text-sm font-bold transition cursor-pointer"
                     title="Imprimir o ver Corte X Parcial"
                   >
-                    <Printer className="w-3.5 h-3.5" />
+                    <Printer className="w-4 h-4" />
                     <span>Corte X (Parcial)</span>
                   </button>
 
@@ -257,63 +257,63 @@ export const CashShiftModule: React.FC<CashShiftModuleProps> = ({
                       setCountedCashInput(liveExpectedCash.toFixed(2));
                       setIsCloseModalOpen(true);
                     }}
-                    className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#1F4461] hover:bg-[#163248] text-white text-xs font-bold shadow-md transition cursor-pointer"
+                    className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#1F4461] hover:bg-[#163248] text-white text-sm font-extrabold shadow-md transition cursor-pointer"
                   >
-                    <Lock className="w-3.5 h-3.5 text-[#9CC55B]" />
+                    <Lock className="w-4 h-4 text-[#9CC55B]" />
                     <span>Corte Z (Cerrar Día)</span>
                   </button>
                 </div>
               </div>
 
               {/* Financial Breakdown Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-5">
                 {/* Expected Cash in Drawer */}
-                <div className="p-4 rounded-2xl bg-gradient-to-br from-[#1F4461] to-[#163248] text-white shadow-md">
-                  <span className="text-xs text-gray-300 uppercase font-bold tracking-wider block mb-1">
+                <div className="p-5 rounded-3xl bg-gradient-to-br from-[#1F4461] to-[#163248] text-white shadow-md">
+                  <span className="text-xs sm:text-sm text-gray-300 uppercase font-extrabold tracking-wider block mb-1.5">
                     Efectivo Esperado en Caja
                   </span>
-                  <span className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-[#9CC55B]">
+                  <span className="text-3xl sm:text-4xl font-black font-mono tracking-tight text-[#9CC55B]">
                     ${liveExpectedCash.toFixed(2)}
                   </span>
-                  <p className="text-[11px] text-gray-300 mt-2">
+                  <p className="text-xs text-gray-300 mt-2.5 font-medium leading-relaxed">
                     Fondo (${initialAmount.toFixed(0)}) + Ventas (${liveCashSales.toFixed(0)}) + Entradas - Gastos
                   </p>
                 </div>
 
                 {/* Cash Sales */}
-                <div className="p-4 rounded-2xl bg-white border border-gray-200 shadow-xs">
-                  <div className="flex items-center justify-between text-gray-500 mb-1">
-                    <span className="text-xs font-bold uppercase">Ventas en Efectivo</span>
-                    <Banknote className="w-4 h-4 text-emerald-600" />
+                <div className="p-5 rounded-3xl bg-white border border-gray-200 shadow-xs">
+                  <div className="flex items-center justify-between text-gray-500 mb-1.5">
+                    <span className="text-xs sm:text-sm font-bold uppercase text-gray-700">Ventas en Efectivo</span>
+                    <Banknote className="w-5 h-5 text-emerald-600" />
                   </div>
-                  <span className="text-2xl font-black font-mono text-gray-900">
+                  <span className="text-3xl sm:text-4xl font-black font-mono text-gray-900">
                     ${liveCashSales.toFixed(2)}
                   </span>
-                  <p className="text-[11px] text-gray-500 mt-1">Cobrado directo en caja</p>
+                  <p className="text-xs text-gray-500 mt-2 font-medium">Cobrado directo en caja</p>
                 </div>
 
                 {/* Card Sales */}
-                <div className="p-4 rounded-2xl bg-white border border-gray-200 shadow-xs">
-                  <div className="flex items-center justify-between text-gray-500 mb-1">
-                    <span className="text-xs font-bold uppercase">Ventas con Tarjeta</span>
-                    <CreditCard className="w-4 h-4 text-blue-600" />
+                <div className="p-5 rounded-3xl bg-white border border-gray-200 shadow-xs">
+                  <div className="flex items-center justify-between text-gray-500 mb-1.5">
+                    <span className="text-xs sm:text-sm font-bold uppercase text-gray-700">Ventas con Tarjeta</span>
+                    <CreditCard className="w-5 h-5 text-blue-600" />
                   </div>
-                  <span className="text-2xl font-black font-mono text-gray-900">
+                  <span className="text-3xl sm:text-4xl font-black font-mono text-gray-900">
                     ${liveCardSales.toFixed(2)}
                   </span>
-                  <p className="text-[11px] text-gray-500 mt-1">Terminal bancaria</p>
+                  <p className="text-xs text-gray-500 mt-2 font-medium">Terminal bancaria</p>
                 </div>
 
                 {/* Total Revenue */}
-                <div className="p-4 rounded-2xl bg-white border border-gray-200 shadow-xs">
-                  <div className="flex items-center justify-between text-gray-500 mb-1">
-                    <span className="text-xs font-bold uppercase">Total Vendido en Turno</span>
-                    <Receipt className="w-4 h-4 text-[#F3C16C]" />
+                <div className="p-5 rounded-3xl bg-white border border-gray-200 shadow-xs">
+                  <div className="flex items-center justify-between text-gray-500 mb-1.5">
+                    <span className="text-xs sm:text-sm font-bold uppercase text-gray-700">Total Vendido en Turno</span>
+                    <Receipt className="w-5 h-5 text-[#F3C16C]" />
                   </div>
-                  <span className="text-2xl font-black font-mono text-[#1F4461]">
+                  <span className="text-3xl sm:text-4xl font-black font-mono text-[#1F4461]">
                     ${liveTotalSales.toFixed(2)}
                   </span>
-                  <p className="text-[11px] text-gray-500 mt-1">{shiftSales.length} tickets emitidos</p>
+                  <p className="text-xs text-gray-500 mt-2 font-medium">{shiftSales.length} tickets emitidos</p>
                 </div>
               </div>
 

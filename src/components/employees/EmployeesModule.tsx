@@ -200,20 +200,20 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
       <div className="p-4 sm:p-6 bg-white border-b border-gray-200">
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <h1 className="text-xl sm:text-2xl font-black text-[#1F4461] tracking-tight">
+            <h1 className="text-2xl sm:text-3xl font-black text-[#1F4461] tracking-tight">
               Gestión de Empleados & Credenciales
             </h1>
-            <p className="text-xs text-gray-500 mt-0.5">
+            <p className="text-xs sm:text-sm text-gray-500 mt-1 font-medium">
               Crea cajeros y administradores, asigna roles, genera contraseñas seguras y comparte accesos
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
             <button
               onClick={openCreateModal}
-              className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#1F4461] hover:bg-[#163248] text-white font-bold text-xs shadow-md transition cursor-pointer active:scale-98"
+              className="flex items-center gap-2 px-4.5 py-2.5 rounded-xl bg-[#1F4461] hover:bg-[#163248] text-white font-bold text-sm sm:text-base shadow-xs transition cursor-pointer active:scale-98"
             >
-              <UserPlus className="w-4 h-4 text-[#9CC55B]" />
+              <UserPlus className="w-4.5 h-4.5 text-[#9CC55B]" />
               <span>Nuevo Empleado</span>
             </button>
           </div>
@@ -222,25 +222,25 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
         {/* Search & Filters */}
         <div className="mt-4 flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
-            <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+            <Search className="w-4.5 h-4.5 absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
             <input
               type="text"
               placeholder="Buscar por nombre, usuario o correo..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 rounded-xl bg-gray-50 border border-gray-200 focus:bg-white focus:border-[#1F4461] text-xs font-medium outline-none"
+              className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 focus:bg-white focus:border-[#1F4461] text-sm font-medium outline-none transition"
             />
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             {(['todos', 'Admin', 'Cajero'] as const).map((r) => (
               <button
                 key={r}
                 onClick={() => setRoleFilter(r)}
-                className={`px-3 py-2 rounded-xl text-xs font-semibold transition cursor-pointer ${
+                className={`px-3 py-1.5 rounded-lg text-xs sm:text-sm font-bold transition cursor-pointer ${
                   roleFilter === r
-                    ? 'bg-[#1F4461] text-white'
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    ? 'bg-[#1F4461] text-white shadow-xs font-bold'
+                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                 }`}
               >
                 {r === 'todos' ? 'Todos los Roles' : r}
