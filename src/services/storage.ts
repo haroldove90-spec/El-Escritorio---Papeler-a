@@ -1,4 +1,16 @@
-import { Product, ServiceItem, Sale, CashShift, Purchase, StockAdjustment, UserAccount } from '../types';
+import {
+  Product,
+  ServiceItem,
+  Sale,
+  CashShift,
+  Purchase,
+  StockAdjustment,
+  UserAccount,
+  ActiveModule,
+  StoreConfig,
+  HeldSale,
+  Quotation,
+} from '../types';
 import { SAMPLE_PRODUCTS, SAMPLE_SERVICES, SAMPLE_SALES, INITIAL_CASH_SHIFT, SAMPLE_PURCHASES, SAMPLE_USERS } from './sampleData';
 
 const KEYS = {
@@ -12,24 +24,31 @@ const KEYS = {
   USERS: 'papeleria_users',
   CURRENT_USER: 'papeleria_current_user',
   AUTH_SESSION: 'papeleria_auth_session',
+  ACTIVE_MODULE: 'papeleria_active_module',
   SAMPLE_CLEARED: 'papeleria_sample_cleared',
 };
 
 // Check if sample data has been permanently cleared by user
 export function isSampleDataCleared(): boolean {
-  return localStorage.getItem(KEYS.SAMPLE_CLEARED) === 'true';
+  try {
+    return localStorage.getItem(KEYS.SAMPLE_CLEARED) === 'true';
+  } catch {
+    return false;
+  }
 }
 
 // Set sample data cleared state
 export function setSampleDataCleared(cleared: boolean): void {
-  if (cleared) {
-    localStorage.setItem(KEYS.SAMPLE_CLEARED, 'true');
-  } else {
-    localStorage.removeItem(KEYS.SAMPLE_CLEARED);
-  }
+  try {
+    if (cleared) {
+      localStorage.setItem(KEYS.SAMPLE_CLEARED, 'true');
+    } else {
+      localStorage.removeItem(KEYS.SAMPLE_CLEARED);
+    }
+  } catch {}
 }
 
-// Session Management (stays logged in on browser reload/refresh)
+// Session Management (stays permanently logged in on browser reload/refresh)
 export interface AuthSession {
   user: UserAccount;
   token: string;
@@ -38,10 +57,45 @@ export interface AuthSession {
 
 export function getAuthSession(): AuthSession | null {
   try {
-    const raw = localStorage.getItem(KEYS.AUTH_SESSION);
+    // 1. Try reading from localStorage first
+    const raw = localStorage.getItem(KEYS.AUTH_SESSION) || sessionStorage.getItem(KEYS.AUTH_SESSION);
     if (raw) {
       const session: AuthSession = JSON.parse(raw);
       if (session?.user?.id && session.user.username) {
+        return session;
+      }
+      if (session?.user?.username && session?.user?.role) {
+        return session;
+      }
+    }
+
+    // 2. Failsafe: check papeleria_current_user
+    const userRaw = localStorage.getItem(KEYS.CURRENT_USER) || sessionStorage.getItem(KEYS.CURRENT_USER);
+    if (userRaw) {
+      const user: UserAccount = JSON.parse(userRaw);
+      if (user?.username && user?.role) {
+        const session: AuthSession = {
+          user,
+          token: `token-restored-${Date.now()}`,
+          loginAt: new Date().toISOString(),
+        };
+        saveAuthSession(user);
+        return session;
+      }
+    }
+
+    // 3. Failsafe: check papeleria_active_role to recover session automatically
+    const activeRole = localStorage.getItem('papeleria_active_role') || sessionStorage.getItem('papeleria_active_role');
+    if (activeRole) {
+      const usersList = getUsers();
+      const matched = usersList.find((u) => u.role === activeRole && u.isActive !== false) || usersList[0];
+      if (matched) {
+        const session: AuthSession = {
+          user: matched,
+          token: `token-restored-role-${Date.now()}`,
+          loginAt: new Date().toISOString(),
+        };
+        saveAuthSession(matched);
         return session;
       }
     }
@@ -57,27 +111,100 @@ export function saveAuthSession(user: UserAccount): void {
     token: `token-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`,
     loginAt: new Date().toISOString(),
   };
-  localStorage.setItem(KEYS.AUTH_SESSION, JSON.stringify(session));
-  localStorage.setItem('papeleria_active_role', user.role);
-  saveCurrentUser(user);
+  const serialized = JSON.stringify(session);
+  const userSerialized = JSON.stringify(user);
+
+  try {
+    localStorage.setItem(KEYS.AUTH_SESSION, serialized);
+  } catch (e) {
+    console.warn('localStorage saveAuthSession AUTH_SESSION failed', e);
+  }
+
+  try {
+    localStorage.setItem('papeleria_active_role', user.role);
+  } catch (e) {
+    console.warn('localStorage saveAuthSession active_role failed', e);
+  }
+
+  try {
+    localStorage.setItem(KEYS.CURRENT_USER, userSerialized);
+  } catch (e) {
+    console.warn('localStorage saveAuthSession CURRENT_USER failed', e);
+  }
+
+  try {
+    sessionStorage.setItem(KEYS.AUTH_SESSION, serialized);
+  } catch {}
+
+  try {
+    sessionStorage.setItem('papeleria_active_role', user.role);
+  } catch {}
+
+  try {
+    sessionStorage.setItem(KEYS.CURRENT_USER, userSerialized);
+  } catch {}
 }
 
 export function clearAuthSession(): void {
-  localStorage.removeItem(KEYS.AUTH_SESSION);
-  localStorage.removeItem('papeleria_active_role');
-  localStorage.removeItem(KEYS.CURRENT_USER);
+  try {
+    localStorage.removeItem(KEYS.AUTH_SESSION);
+    localStorage.removeItem('papeleria_active_role');
+    localStorage.removeItem(KEYS.CURRENT_USER);
+    localStorage.removeItem(KEYS.ACTIVE_MODULE);
+  } catch {}
+
+  try {
+    sessionStorage.removeItem(KEYS.AUTH_SESSION);
+    sessionStorage.removeItem('papeleria_active_role');
+    sessionStorage.removeItem(KEYS.CURRENT_USER);
+    sessionStorage.removeItem(KEYS.ACTIVE_MODULE);
+  } catch {}
+}
+
+// Active Module Navigation Persistence (keeps user on current screen on refresh)
+export function getSavedActiveModule(role?: string | null): ActiveModule {
+  try {
+    const saved = (localStorage.getItem(KEYS.ACTIVE_MODULE) || sessionStorage.getItem(KEYS.ACTIVE_MODULE)) as ActiveModule | null;
+    if (saved) {
+      if (role === 'Cajero') {
+        // Cajero can access POS, cash shift, personal profile and manual
+        if (['pos', 'cash', 'profile', 'manual'].includes(saved)) {
+          return saved;
+        }
+        return 'pos';
+      }
+      if (role === 'Admin') {
+        // Admin can access all modules: pos, inventory, purchases, cash, reports, employees, profile, manual
+        if (['pos', 'inventory', 'purchases', 'cash', 'reports', 'employees', 'profile', 'manual'].includes(saved)) {
+          return saved;
+        }
+        return 'inventory';
+      }
+      return saved;
+    }
+  } catch {}
+  return role === 'Admin' ? 'inventory' : 'pos';
+}
+
+export function saveActiveModule(module: ActiveModule): void {
+  try {
+    localStorage.setItem(KEYS.ACTIVE_MODULE, module);
+  } catch {}
+  try {
+    sessionStorage.setItem(KEYS.ACTIVE_MODULE, module);
+  } catch {}
 }
 
 // Initialize and get Users
 export function getUsers(): UserAccount[] {
   try {
-    const raw = localStorage.getItem(KEYS.USERS);
+    const raw = localStorage.getItem(KEYS.USERS) || sessionStorage.getItem(KEYS.USERS);
     if (raw) {
       const list: UserAccount[] = JSON.parse(raw);
       // Ensure Admin1, haroldo90, and cajero1 are present in the list
-      const hasAdmin1 = list.some((u) => u.username.toLowerCase() === 'admin1');
-      const hasHaroldo = list.some((u) => u.username.toLowerCase() === 'haroldo90');
-      const hasCajero1 = list.some((u) => u.username.toLowerCase() === 'cajero1');
+      const hasAdmin1 = list.some((u) => (u?.username || '').toLowerCase() === 'admin1');
+      const hasHaroldo = list.some((u) => (u?.username || '').toLowerCase() === 'haroldo90');
+      const hasCajero1 = list.some((u) => (u?.username || '').toLowerCase() === 'cajero1');
 
       if (!hasAdmin1 || !hasHaroldo || !hasCajero1) {
         const merged = [...list];
@@ -93,7 +220,7 @@ export function getUsers(): UserAccount[] {
           const caj = SAMPLE_USERS.find((u) => u.username === 'cajero1');
           if (caj) merged.push(caj);
         }
-        saveUsers(merged);
+        saveUsers(merged, false);
         return merged;
       }
       return list;
@@ -103,18 +230,29 @@ export function getUsers(): UserAccount[] {
   }
 
   // Default to sample users
-  saveUsers(SAMPLE_USERS);
+  saveUsers(SAMPLE_USERS, false);
   return SAMPLE_USERS;
 }
 
-export function saveUsers(users: UserAccount[]): void {
-  localStorage.setItem(KEYS.USERS, JSON.stringify(users));
-  window.dispatchEvent(new Event('papeleria_data_change'));
+export function saveUsers(users: UserAccount[], dispatchEvent = true): void {
+  const serialized = JSON.stringify(users);
+  try {
+    localStorage.setItem(KEYS.USERS, serialized);
+  } catch (e) {
+    console.warn('localStorage saveUsers failed', e);
+  }
+  try {
+    sessionStorage.setItem(KEYS.USERS, serialized);
+  } catch {}
+
+  if (dispatchEvent) {
+    window.dispatchEvent(new Event('papeleria_data_change'));
+  }
 }
 
 export function getCurrentUser(): UserAccount {
   try {
-    const raw = localStorage.getItem(KEYS.CURRENT_USER);
+    const raw = localStorage.getItem(KEYS.CURRENT_USER) || sessionStorage.getItem(KEYS.CURRENT_USER);
     if (raw) {
       return JSON.parse(raw);
     }
@@ -126,11 +264,13 @@ export function getCurrentUser(): UserAccount {
 }
 
 export function saveCurrentUser(user: UserAccount): void {
-  localStorage.setItem(KEYS.CURRENT_USER, JSON.stringify(user));
-  // Also sync in users list
-  const users = getUsers();
-  const updated = users.map(u => u.id === user.id ? user : u);
-  saveUsers(updated);
+  const serialized = JSON.stringify(user);
+  try {
+    localStorage.setItem(KEYS.CURRENT_USER, serialized);
+  } catch {}
+  try {
+    sessionStorage.setItem(KEYS.CURRENT_USER, serialized);
+  } catch {}
 }
 
 // Initialize and get Products
@@ -140,10 +280,20 @@ export function getProducts(): Product[] {
     if (raw) {
       const parsed: Product[] = JSON.parse(raw);
       if (parsed && parsed.length > 0) {
-        return parsed.map((p) => ({
-          ...p,
-          isActive: p.isActive !== false,
-        }));
+        const seenIds = new Set<string>();
+        const uniqueProducts: Product[] = [];
+        for (const p of parsed) {
+          const validId = p.id || `prod-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+          if (!seenIds.has(validId)) {
+            seenIds.add(validId);
+            uniqueProducts.push({
+              ...p,
+              id: validId,
+              isActive: p.isActive !== false,
+            });
+          }
+        }
+        return uniqueProducts;
       }
     }
   } catch (e) {
@@ -314,4 +464,54 @@ export function restoreSampleData(): void {
   localStorage.setItem(KEYS.CURRENT_USER, JSON.stringify(SAMPLE_USERS[0]));
 
   window.dispatchEvent(new Event('papeleria_data_change'));
+}
+
+// Store Configuration & Fiscal Ticket Info
+export const DEFAULT_STORE_CONFIG: StoreConfig = {
+  name: 'Papelería El Escritorio',
+  subtitle: 'Artículos Escolares, Oficina y Copias',
+  rfc: 'EES-260101-9P0',
+  address: 'Av. Universidad 405, CDMX',
+  phone: '55 1234 5678',
+  ticketFooter: '¡Gracias por su compra!\nConserve este ticket para cualquier aclaración.\nNo hay cambios en hojas sueltas o monografías.',
+  logoUrl: 'https://appdesignproyectos.com/papelerialogo.png',
+};
+
+export function getStoreConfig(): StoreConfig {
+  try {
+    const raw = localStorage.getItem('papeleria_store_config');
+    if (raw) return { ...DEFAULT_STORE_CONFIG, ...JSON.parse(raw) };
+  } catch {}
+  return DEFAULT_STORE_CONFIG;
+}
+
+export function saveStoreConfig(config: StoreConfig): void {
+  localStorage.setItem('papeleria_store_config', JSON.stringify(config));
+  window.dispatchEvent(new Event('papeleria_data_change'));
+}
+
+// Held Sales (Ventas en espera / Pausar venta)
+export function getHeldSales(): HeldSale[] {
+  try {
+    const raw = localStorage.getItem('papeleria_held_sales');
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return [];
+}
+
+export function saveHeldSales(held: HeldSale[]): void {
+  localStorage.setItem('papeleria_held_sales', JSON.stringify(held));
+}
+
+// Quotations (Cotizaciones / Presupuestos de listas escolares)
+export function getQuotations(): Quotation[] {
+  try {
+    const raw = localStorage.getItem('papeleria_quotations');
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return [];
+}
+
+export function saveQuotations(quotes: Quotation[]): void {
+  localStorage.setItem('papeleria_quotations', JSON.stringify(quotes));
 }

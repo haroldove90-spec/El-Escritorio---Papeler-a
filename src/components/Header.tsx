@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { LogOut, Shield, Database, Keyboard, ChevronDown, Check, Coins, User } from 'lucide-react';
+import { LogOut, Shield, Database, Keyboard, ChevronDown, Check, Coins, User, Store } from 'lucide-react';
 import { PWAInstallButton } from './PWAInstallButton';
 import { CashShift, UserAccount } from '../types';
 
@@ -9,6 +9,7 @@ interface HeaderProps {
   activeShift: CashShift | null;
   onLogout: () => void;
   onOpenDataSettings: () => void;
+  onOpenStoreSettings?: () => void;
   onOpenCashModal: () => void;
   onOpenProfile?: () => void;
 }
@@ -19,6 +20,7 @@ export const Header: React.FC<HeaderProps> = ({
   activeShift,
   onLogout,
   onOpenDataSettings,
+  onOpenStoreSettings,
   onOpenCashModal,
   onOpenProfile,
 }) => {
@@ -112,14 +114,26 @@ export const Header: React.FC<HeaderProps> = ({
       <div className="flex items-center gap-1.5 sm:gap-2.5">
         {/* Supabase & Sample Data Settings Button */}
         {currentRole === 'Admin' && (
-          <button
-            onClick={onOpenDataSettings}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-semibold text-gray-100 transition cursor-pointer"
-            title="Gestión de Datos y Supabase"
-          >
-            <Database className="w-3.5 h-3.5 text-[#F3C16C]" />
-            <span className="hidden sm:inline">Datos</span>
-          </button>
+          <>
+            {onOpenStoreSettings && (
+              <button
+                onClick={onOpenStoreSettings}
+                className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-semibold text-gray-100 transition cursor-pointer"
+                title="Configuración de Datos del Negocio y Ticket"
+              >
+                <Store className="w-3.5 h-3.5 text-[#9CC55B]" />
+                <span className="hidden md:inline">Ticket</span>
+              </button>
+            )}
+            <button
+              onClick={onOpenDataSettings}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-semibold text-gray-100 transition cursor-pointer"
+              title="Gestión de Datos y Supabase"
+            >
+              <Database className="w-3.5 h-3.5 text-[#F3C16C]" />
+              <span className="hidden sm:inline">Datos</span>
+            </button>
+          </>
         )}
 
         {/* PWA Fast Install Button */}

@@ -75,6 +75,41 @@ export interface Sale {
   cashierName: string;
   status: 'completada' | 'cancelada';
   canceledReason?: string;
+  discount?: number;
+  discountType?: 'percent' | 'amount';
+  originalTotal?: number;
+}
+
+export interface StoreConfig {
+  name: string;
+  subtitle: string;
+  rfc: string;
+  address: string;
+  phone: string;
+  ticketFooter: string;
+  logoUrl?: string;
+}
+
+export interface HeldSale {
+  id: string;
+  label: string;
+  timestamp: string;
+  items: CartItem[];
+  notes?: string;
+}
+
+export interface Quotation {
+  id: string;
+  folio: number;
+  date: string;
+  customerName: string;
+  schoolOrGrade?: string;
+  notes?: string;
+  items: CartItem[];
+  subtotal: number;
+  discount: number;
+  total: number;
+  validityDays: number;
 }
 
 export interface CashMovement {
@@ -145,5 +180,5 @@ export interface SupabaseConfig {
   isConnected: boolean;
 }
 
-export type ActiveModule = 'pos' | 'inventory' | 'purchases' | 'cash' | 'reports' | 'employees' | 'profile';
+export type ActiveModule = 'pos' | 'inventory' | 'purchases' | 'cash' | 'reports' | 'employees' | 'profile' | 'manual';
 

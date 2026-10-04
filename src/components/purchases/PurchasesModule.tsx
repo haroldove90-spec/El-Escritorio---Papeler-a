@@ -12,13 +12,27 @@ import {
   X,
   History,
   AlertTriangle,
+  Loader2,
+  Cloud,
+  Database,
+  Copy,
+  ExternalLink,
+  ShieldCheck,
+  Check,
+  RefreshCw,
 } from 'lucide-react';
+import {
+  getStoredSupabaseConfig,
+  fetchPurchasesFromSupabase,
+  syncPurchaseToSupabase,
+} from '../../services/supabaseClient';
+import { PURCHASES_ONLY_SQL, FULL_SUPABASE_SQL_WITH_SAMPLE_DATA } from '../../services/supabaseSql';
 
 interface PurchasesModuleProps {
   products: Product[];
   purchases: Purchase[];
   adjustments: StockAdjustment[];
-  onSavePurchase: (purchase: Purchase) => void;
+  onSavePurchase: (purchase: Purchase) => Promise<{ success: boolean; error?: string } | void> | void;
   onDeletePurchases?: (purchaseIds: string[]) => void;
 }
 
@@ -38,6 +52,45 @@ export const PurchasesModule: React.FC<PurchasesModuleProps> = ({
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [purchaseNotes, setPurchaseNotes] = useState('');
   const [purchaseItems, setPurchaseItems] = useState<PurchaseItem[]>([]);
+  const [isSaving, setIsSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [isSyncingAll, setIsSyncingAll] = useState(false);
+  const [syncNotice, setSyncNotice] = useState<{ message: string; type: 'success' | 'warn' | 'error' } | null>(null);
+
+  // Supabase SQL Modal state
+  const [isSqlModalOpen, setIsSqlModalOpen] = useState(false);
+  const [selectedSqlTab, setSelectedSqlTab] = useState<'purchases' | 'full'>('purchases');
+  const [copiedSql, setCopiedSql] = useState(false);
+  const supabaseConfig = getStoredSupabaseConfig();
+
+  const showNotification = (message: string, type: 'success' | 'warn' | 'error' = 'success') => {
+    setSyncNotice({ message, type });
+    setTimeout(() => {
+      setSyncNotice((curr) => (curr?.message === message ? null : curr));
+    }, 6000);
+  };
+
+  const handleManualSyncWithSupabase = async () => {
+    setIsSyncingAll(true);
+    try {
+      let count = 0;
+      for (const pur of purchases) {
+        const res = await syncPurchaseToSupabase(pur);
+        if (res.success) count++;
+      }
+      const remote = await fetchPurchasesFromSupabase();
+      window.dispatchEvent(new Event('papeleria_data_change'));
+      showNotification(
+        `✓ Sincronización exitosa: ${remote?.length || count} compras confirmadas en Supabase Cloud.`,
+        'success'
+      );
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error al sincronizar';
+      showNotification(`⚠️ Error al sincronizar compras con Supabase: ${msg}`, 'error');
+    } finally {
+      setIsSyncingAll(false);
+    }
+  };
 
   // Item selector in modal
   const [selectedProductId, setSelectedProductId] = useState('');
@@ -49,6 +102,7 @@ export const PurchasesModule: React.FC<PurchasesModuleProps> = ({
     setInvoiceNumber(`FAC-${Math.floor(1000 + Math.random() * 9000)}`);
     setPurchaseNotes('');
     setPurchaseItems([]);
+    setFormError(null);
     if (products.length > 0) {
       setSelectedProductId(products[0].id);
       setItemCostPrice(products[0].costPrice.toString());
@@ -122,12 +176,19 @@ export const PurchasesModule: React.FC<PurchasesModuleProps> = ({
     }
   };
 
-  const handleSubmitPurchase = (e: React.FormEvent) => {
+  const handleSubmitPurchase = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!supplier.trim() || purchaseItems.length === 0) {
-      alert('Debes indicar proveedor y al menos un producto a ingresar.');
+    if (!supplier.trim()) {
+      setFormError('Debes indicar el nombre del proveedor.');
       return;
     }
+    if (purchaseItems.length === 0) {
+      setFormError('Debes agregar al menos un producto a la lista de la compra.');
+      return;
+    }
+
+    setFormError(null);
+    setIsSaving(true);
 
     const newPurchase: Purchase = {
       id: `pur-${Date.now()}`,
@@ -139,34 +200,107 @@ export const PurchasesModule: React.FC<PurchasesModuleProps> = ({
       notes: purchaseNotes.trim() || undefined,
     };
 
-    onSavePurchase(newPurchase);
-    setIsModalOpen(false);
+    try {
+      const res = await onSavePurchase(newPurchase);
+      if (res && res.success === false) {
+        setFormError(
+          res.error || 'No se pudo guardar la compra en Supabase. Revisa las tablas o permisos.'
+        );
+        return;
+      }
+      setIsModalOpen(false);
+      showNotification(
+        `✓ Entrada de mercancía de "${newPurchase.supplier}" ($${newPurchase.total.toFixed(2)}) guardada y sincronizada en Supabase Cloud.`,
+        'success'
+      );
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error inesperado';
+      setFormError(`Error al sincronizar con Supabase: ${msg}`);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-gray-50 pb-16 md:pb-0">
       {/* Top Header */}
       <div className="p-4 sm:p-6 bg-white border-b border-gray-200">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-[#1F4461] tracking-tight">
-              Compras y Entradas de Mercancía
-            </h1>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-2xl sm:text-3xl font-black text-[#1F4461] tracking-tight">
+                Compras y Entradas de Mercancía
+              </h1>
+              <div
+                className={`hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                  supabaseConfig.isConnected
+                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                    : 'bg-amber-50 text-amber-800 border border-amber-200'
+                }`}
+                title={supabaseConfig.isConnected ? 'Conectado a Supabase PostgreSQL Cloud' : 'Supabase no conectado'}
+              >
+                <span className={`w-2 h-2 rounded-full ${supabaseConfig.isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                <span>{supabaseConfig.isConnected ? 'Supabase Cloud Activo' : 'Modo Local'}</span>
+              </div>
+            </div>
             <p className="text-xs sm:text-sm text-gray-500 mt-1 font-medium">
-              Recepción a proveedores con actualización automática de existencias y costos
+              Recepción a proveedores con actualización automática de existencias, costos y guardado en Supabase
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+            {/* View / Copy SQL Button */}
+            <button
+              onClick={() => setIsSqlModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-[#1F4461] border border-blue-200 font-bold text-xs sm:text-sm transition cursor-pointer shadow-2xs"
+              title="Ver y copiar script SQL para crear las tablas purchases y purchase_items en Supabase"
+            >
+              <Database className="w-4 h-4 text-blue-600" />
+              <span>Script SQL Supabase</span>
+            </button>
+
+            {/* Sync with Supabase Button */}
+            <button
+              onClick={handleManualSyncWithSupabase}
+              disabled={isSyncingAll}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold text-xs sm:text-sm transition cursor-pointer disabled:opacity-50 shadow-2xs"
+              title="Sincronizar y respaldar todas las compras con Supabase Cloud"
+            >
+              <RefreshCw className={`w-4 h-4 ${isSyncingAll ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">{isSyncingAll ? 'Sincronizando...' : 'Sincronizar Compras'}</span>
+            </button>
+
+            {/* New Purchase Button */}
             <button
               onClick={openNewPurchaseModal}
-              className="flex items-center gap-2 px-4.5 py-2.5 rounded-xl bg-[#1F4461] hover:bg-[#163248] text-white font-bold text-sm sm:text-base shadow-xs transition cursor-pointer active:scale-95"
+              className="flex items-center gap-2 px-4 py-2 sm:py-2.5 rounded-xl bg-[#1F4461] hover:bg-[#163248] text-white font-bold text-xs sm:text-sm shadow-xs transition cursor-pointer active:scale-95"
             >
               <PackagePlus className="w-4.5 h-4.5" />
               <span>Registrar Entrada / Compra</span>
             </button>
           </div>
         </div>
+
+        {/* Sync notification banner if active */}
+        {syncNotice && (
+          <div
+            className={`mt-3 p-3 rounded-xl text-xs font-semibold flex items-center justify-between border animate-in fade-in duration-200 ${
+              syncNotice.type === 'success'
+                ? 'bg-emerald-50 text-emerald-900 border-emerald-200'
+                : syncNotice.type === 'warn'
+                ? 'bg-amber-50 text-amber-900 border-amber-200'
+                : 'bg-red-50 text-red-900 border-red-200'
+            }`}
+          >
+            <span>{syncNotice.message}</span>
+            <button
+              onClick={() => setSyncNotice(null)}
+              className="text-gray-400 hover:text-gray-600 p-0.5"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
 
         {/* Tab switch between purchases and adjustment history */}
         <div className="flex gap-2 mt-4">
@@ -302,7 +436,7 @@ export const PurchasesModule: React.FC<PurchasesModuleProps> = ({
                       </thead>
                       <tbody className="divide-y divide-gray-50">
                         {pur.items.map((item, idx) => (
-                          <tr key={idx}>
+                          <tr key={`${pur.id}-item-${item.productId || idx}-${idx}`}>
                             <td className="py-1.5 font-medium text-gray-800">{item.productName}</td>
                             <td className="py-1.5 text-center font-mono font-bold text-emerald-700">
                               +{item.quantity} pzas
@@ -503,7 +637,7 @@ export const PurchasesModule: React.FC<PurchasesModuleProps> = ({
                   <div className="border border-gray-200 rounded-xl overflow-hidden divide-y divide-gray-100 max-h-48 overflow-y-auto">
                     {purchaseItems.map((item, index) => (
                       <div
-                        key={index}
+                        key={`new-pur-item-${item.productId}-${index}`}
                         className="p-2.5 flex items-center justify-between text-xs bg-white"
                       >
                         <div className="min-w-0">
@@ -549,27 +683,201 @@ export const PurchasesModule: React.FC<PurchasesModuleProps> = ({
                 />
               </div>
 
+              {/* Cloud Storage Notice */}
+              <div className="p-3 bg-blue-50/80 rounded-xl border border-blue-200 flex items-start justify-between gap-3 text-xs">
+                <div className="flex items-start gap-2 text-blue-900">
+                  <Cloud className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-bold">Guardado persistente en Supabase Cloud</p>
+                    <p className="text-[11px] text-blue-700 mt-0.5">
+                      Esta entrada registrará la compra y sus artículos en Supabase, e incrementará de forma automática las existencias de cada producto en la nube.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setIsSqlModalOpen(true)}
+                  className="text-blue-700 hover:text-blue-900 underline font-bold text-[11px] shrink-0"
+                >
+                  Ver Script SQL
+                </button>
+              </div>
+
+              {/* Form or Supabase Error Box */}
+              {formError && (
+                <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-800 flex items-start justify-between gap-3 animate-in fade-in duration-150">
+                  <div className="flex items-start gap-2">
+                    <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold">No se pudo guardar la compra:</p>
+                      <p className="text-[11px] mt-0.5 text-red-700">{formError}</p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsSqlModalOpen(true)}
+                    className="px-2.5 py-1 rounded-lg bg-red-100 hover:bg-red-200 text-red-800 font-bold text-[11px] shrink-0 transition"
+                  >
+                    Ver SQL
+                  </button>
+                </div>
+              )}
+
               <div className="pt-4 border-t border-gray-200 flex justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-100 transition cursor-pointer"
+                  disabled={isSaving}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-100 transition cursor-pointer disabled:opacity-50"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  disabled={purchaseItems.length === 0}
-                  className={`px-5 py-2 rounded-xl text-xs font-bold shadow-md transition cursor-pointer ${
-                    purchaseItems.length === 0
-                      ? 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                      : 'bg-[#9CC55B] hover:bg-[#8bb44c] text-[#1F4461]'
-                  }`}
+                  disabled={purchaseItems.length === 0 || isSaving}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#1F4461] hover:bg-[#163248] text-white font-bold text-xs shadow-md transition cursor-pointer disabled:opacity-50"
                 >
-                  Confirmar Entrada de Inventario
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-[#9CC55B]" />
+                      <span>Guardando en Supabase...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4 text-[#9CC55B]" />
+                      <span>Confirmar Entrada de Inventario</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* SUPABASE SQL SCRIPT MODAL */}
+      {isSqlModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl overflow-hidden border border-gray-100 flex flex-col max-h-[90vh]">
+            {/* Header */}
+            <div className="bg-[#1F4461] text-white p-4 sm:p-5 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-white/10 text-[#9CC55B]">
+                  <Database className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base sm:text-lg">Script SQL para Compras en Supabase</h3>
+                  <p className="text-xs text-gray-300">
+                    Instrucciones para habilitar las tablas 'purchases' y 'purchase_items'
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsSqlModalOpen(false)}
+                className="p-1 rounded-lg hover:bg-white/20 text-gray-200 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-4 sm:p-6 overflow-y-auto space-y-4 text-xs">
+              <div className="p-4 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 space-y-2">
+                <h4 className="font-bold flex items-center gap-2 text-xs sm:text-sm text-[#1F4461]">
+                  <ShieldCheck className="w-4 h-4 text-blue-600" />
+                  ¿Cómo ejecutar este SQL en Supabase en 3 pasos?
+                </h4>
+                <ol className="list-decimal list-inside space-y-1.5 text-xs text-blue-800">
+                  <li>
+                    Ingresa a tu consola de Supabase en{' '}
+                    <a
+                      href="https://supabase.com/dashboard"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-bold underline text-blue-900 inline-flex items-center gap-0.5"
+                    >
+                      supabase.com/dashboard <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </li>
+                  <li>En el menú de la izquierda, selecciona <strong>SQL Editor</strong> y haz clic en <strong>New query</strong>.</li>
+                  <li>Pega el código copiado a continuación y presiona el botón verde <strong>RUN</strong>.</li>
+                </ol>
+              </div>
+
+              {/* Tab Selector */}
+              <div className="flex items-center gap-2 border-b border-gray-200 pb-2">
+                <button
+                  onClick={() => setSelectedSqlTab('purchases')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    selectedSqlTab === 'purchases'
+                      ? 'bg-[#1F4461] text-white shadow-2xs'
+                      : 'text-gray-600 hover:text-gray-900 bg-gray-100'
+                  }`}
+                >
+                  Tablas de Compras ('purchases' y 'purchase_items')
+                </button>
+                <button
+                  onClick={() => setSelectedSqlTab('full')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    selectedSqlTab === 'full'
+                      ? 'bg-[#1F4461] text-white shadow-2xs'
+                      : 'text-gray-600 hover:text-gray-900 bg-gray-100'
+                  }`}
+                >
+                  Base de Datos Completa
+                </button>
+              </div>
+
+              {/* Code viewer */}
+              <div className="relative">
+                <pre className="p-4 bg-gray-900 text-emerald-400 font-mono text-[11px] rounded-xl overflow-x-auto max-h-64 sm:max-h-72 select-all leading-relaxed border border-gray-800">
+                  {selectedSqlTab === 'purchases' ? PURCHASES_ONLY_SQL : FULL_SUPABASE_SQL_WITH_SAMPLE_DATA}
+                </pre>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 bg-gray-50 border-t border-gray-200 flex flex-wrap items-center justify-between gap-3 shrink-0">
+              <span className="text-[11px] text-gray-500 font-medium">
+                {selectedSqlTab === 'purchases'
+                  ? 'Crea tablas purchases, purchase_items y políticas RLS'
+                  : 'Script DDL completo con todas las tablas del sistema'}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsSqlModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-200 transition cursor-pointer"
+                >
+                  Cerrar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const code =
+                      selectedSqlTab === 'purchases'
+                        ? PURCHASES_ONLY_SQL
+                        : FULL_SUPABASE_SQL_WITH_SAMPLE_DATA;
+                    navigator.clipboard.writeText(code);
+                    setCopiedSql(true);
+                    setTimeout(() => setCopiedSql(false), 3000);
+                  }}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition cursor-pointer active:scale-95"
+                >
+                  {copiedSql ? (
+                    <>
+                      <Check className="w-4 h-4" />
+                      <span>¡SQL Copiado al Portapapeles!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4" />
+                      <span>Copiar Código SQL</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

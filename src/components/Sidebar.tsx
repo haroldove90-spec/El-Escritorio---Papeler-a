@@ -10,6 +10,7 @@ import {
   ChevronLeft,
   ChevronRight,
   HelpCircle,
+  BookOpen,
 } from 'lucide-react';
 import { ActiveModule } from '../types';
 
@@ -43,7 +44,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
       label: 'Punto de Venta',
       icon: ShoppingCart,
       shortcut: 'F1',
-      roles: ['Cajero'],
+      roles: ['Admin', 'Cajero'],
     },
     {
       id: 'inventory',
@@ -60,7 +61,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     },
     {
       id: 'cash',
-      label: 'Caja y Cortes X / Z',
+      label: 'Control de caja',
       icon: Coins,
       roles: ['Admin', 'Cajero'],
     },
@@ -75,6 +76,12 @@ export const Sidebar: React.FC<SidebarProps> = ({
       label: 'Empleados & Roles',
       icon: Users,
       roles: ['Admin'],
+    },
+    {
+      id: 'manual',
+      label: 'Manual de Usuario',
+      icon: BookOpen,
+      roles: ['Admin', 'Cajero'],
     },
     {
       id: 'profile',

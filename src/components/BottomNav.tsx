@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShoppingCart, PackageSearch, Truck, Coins, BarChart3, User } from 'lucide-react';
+import { ShoppingCart, PackageSearch, Truck, Coins, BarChart3, User, BookOpen } from 'lucide-react';
 import { ActiveModule } from '../types';
 
 interface BottomNavProps {
@@ -26,7 +26,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       id: 'pos',
       label: 'Cobro POS',
       icon: ShoppingCart,
-      roles: ['Cajero'],
+      roles: ['Admin', 'Cajero'],
     },
     {
       id: 'inventory',
@@ -52,6 +52,12 @@ export const BottomNav: React.FC<BottomNavProps> = ({
       label: 'Reportes',
       icon: BarChart3,
       roles: ['Admin'],
+    },
+    {
+      id: 'manual',
+      label: 'Manual',
+      icon: BookOpen,
+      roles: ['Admin', 'Cajero'],
     },
     {
       id: 'profile',

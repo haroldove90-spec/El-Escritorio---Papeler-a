@@ -22,7 +22,7 @@ export function usePWAInstall() {
     }
 
     // Detect iOS devices
-    const userAgent = window.navigator.userAgent.toLowerCase();
+    const userAgent = (window.navigator?.userAgent || '').toLowerCase();
     const isIOSDevice = /iphone|ipad|ipod/.test(userAgent);
     setIsIOS(isIOSDevice);
 

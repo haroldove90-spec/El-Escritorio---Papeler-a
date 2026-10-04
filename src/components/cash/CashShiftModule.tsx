@@ -133,7 +133,7 @@ export const CashShiftModule: React.FC<CashShiftModuleProps> = ({
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl sm:text-3xl font-black text-[#1F4461] tracking-tight">
-              Control de Caja Chica & Cortes X / Z
+              Control de caja
             </h1>
             <p className="text-xs sm:text-sm text-gray-500 mt-1 font-medium">
               Apertura de turno, arqueo en vivo, gastos de caja chica y cierre definitivo

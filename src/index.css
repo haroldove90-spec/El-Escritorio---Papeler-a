@@ -34,12 +34,13 @@
     letter-spacing: -0.015em;
   }
 
-  /* Thermal printer styles */
+  /* Printing styles (Thermal tickets & Full-Page Manuals/Checklists) */
   @media print {
     body * {
       visibility: hidden;
     }
-    #ticket-print-area, #ticket-print-area * {
+    #ticket-print-area, #ticket-print-area *,
+    #printable-manual, #printable-manual * {
       visibility: visible;
     }
     #ticket-print-area {
@@ -51,6 +52,26 @@
       padding: 0;
       background: white !important;
       color: black !important;
+    }
+    #printable-manual {
+      position: absolute;
+      left: 0;
+      top: 0;
+      width: 100%;
+      margin: 0;
+      padding: 12mm 15mm;
+      background: white !important;
+      color: #1e293b !important;
+      box-shadow: none !important;
+      border: none !important;
+    }
+    .print-page-break {
+      page-break-after: always;
+      break-after: page;
+    }
+    .print-avoid-break {
+      page-break-inside: avoid;
+      break-inside: avoid;
     }
   }
 }

@@ -61,11 +61,13 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
   const [copiedNotice, setCopiedNotice] = useState(false);
 
   // Filtered employees
+  const cleanSearch = searchTerm.toLowerCase().trim();
   const filteredUsers = users.filter((u) => {
-    const matchesSearch =
-      u.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      u.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const nameMatch = (u.fullName || '').toLowerCase().includes(cleanSearch);
+    const userMatch = (u.username || '').toLowerCase().includes(cleanSearch);
+    const emailMatch = (u.email || '').toLowerCase().includes(cleanSearch);
+    const matchesSearch = !cleanSearch || nameMatch || userMatch || emailMatch;
+
     const matchesRole = roleFilter === 'todos' || u.role === roleFilter;
     return matchesSearch && matchesRole;
   });
@@ -406,19 +408,24 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
 
                           {/* Delete User Button (Cannot delete primary admin accounts) */}
                           <button
-                            disabled={user.username.toLowerCase() === 'admin1' || user.username.toLowerCase() === 'haroldo90'}
+                            disabled={
+                              (user.username || '').toLowerCase() === 'admin1' ||
+                              (user.username || '').toLowerCase() === 'haroldo90'
+                            }
                             onClick={() => {
                               if (confirm(`¿Eliminar al empleado ${user.fullName}?`)) {
                                 onDeleteUser(user.id);
                               }
                             }}
                             className={`p-1.5 rounded-lg transition ${
-                              user.username.toLowerCase() === 'admin1' || user.username.toLowerCase() === 'haroldo90'
+                              (user.username || '').toLowerCase() === 'admin1' ||
+                              (user.username || '').toLowerCase() === 'haroldo90'
                                 ? 'text-gray-300 cursor-not-allowed'
                                 : 'text-gray-400 hover:text-red-600 hover:bg-red-50 cursor-pointer'
                             }`}
                             title={
-                              user.username.toLowerCase() === 'admin1' || user.username.toLowerCase() === 'haroldo90'
+                              (user.username || '').toLowerCase() === 'admin1' ||
+                              (user.username || '').toLowerCase() === 'haroldo90'
                                 ? 'No se puede eliminar una cuenta de Administrador Principal'
                                 : 'Eliminar empleado'
                             }

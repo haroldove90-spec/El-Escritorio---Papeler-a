@@ -5,6 +5,7 @@ import {
   CartItem,
   Sale,
   CashShift,
+  HeldSale,
 } from '../../types';
 import {
   Search,
@@ -26,26 +27,43 @@ import {
   BookOpen,
   ShoppingCart,
   ArrowLeft,
+  Receipt,
+  FileSpreadsheet,
+  PauseCircle,
+  PlayCircle,
+  Tag,
+  Percent,
+  X,
+  Clock,
 } from 'lucide-react';
 import { ThermalTicket } from './ThermalTicket';
+import { ReceiptHistoryModal } from './ReceiptHistoryModal';
+import { QuotationModal } from './QuotationModal';
 import { useBarcodeScanner } from '../../hooks/useBarcodeScanner';
+import { getHeldSales, saveHeldSales } from '../../services/storage';
 
 interface PosModuleProps {
   products: Product[];
   services: ServiceItem[];
   activeShift: CashShift | null;
+  sales: Sale[];
+  userRole: string | null;
   onCompleteSale: (sale: Sale) => void;
   onOpenShiftModal: () => void;
   onUpdateProductStock: (productId: string, quantityDeducted: number) => void;
+  onCancelSale: (saleId: string, reason: string) => void;
 }
 
 export const PosModule: React.FC<PosModuleProps> = ({
   products,
   services,
   activeShift,
+  sales,
+  userRole,
   onCompleteSale,
   onOpenShiftModal,
   onUpdateProductStock,
+  onCancelSale,
 }) => {
   // Cart state
   const [cart, setCart] = useState<CartItem[]>([]);
@@ -54,12 +72,23 @@ export const PosModule: React.FC<PosModuleProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('todos');
   const [showServices, setShowServices] = useState(true);
 
-  // Checkout modal state
+  // Modals state
+  const [isHistoryOpen, setIsHistoryOpen] = useState(false);
+  const [isQuotationOpen, setIsQuotationOpen] = useState(false);
+  const [heldSales, setHeldSales] = useState<HeldSale[]>(() => getHeldSales());
+  const [showHeldDrawer, setShowHeldDrawer] = useState(false);
+
+  // Checkout modal state & Discount
   const [isCheckoutOpen, setIsCheckoutOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'efectivo' | 'tarjeta'>('efectivo');
   const [cashReceived, setCashReceived] = useState<string>('');
   const [cardReference, setCardReference] = useState('');
   const [completedSale, setCompletedSale] = useState<Sale | null>(null);
+
+  // Discount
+  const [isDiscountEnabled, setIsDiscountEnabled] = useState(false);
+  const [discountType, setDiscountType] = useState<'percent' | 'amount'>('percent');
+  const [discountValue, setDiscountValue] = useState<string>('5');
 
   // Sound/notification alert
   const [lastScanAlert, setLastScanAlert] = useState<{ message: string; type: 'success' | 'warn' } | null>(null);
@@ -100,10 +129,24 @@ export const PosModule: React.FC<PosModuleProps> = ({
     },
   });
 
-  // Calculate Cart Totals
+  // Calculate Cart Totals & Discount
   const totalAmount = cart.reduce((acc, item) => acc + item.subtotal, 0);
   const totalItemsCount = cart.reduce((acc, item) => acc + item.quantity, 0);
   const totalCost = cart.reduce((acc, item) => acc + item.costPrice * item.quantity, 0);
+
+  const rawDiscount = isDiscountEnabled ? parseFloat(discountValue) || 0 : 0;
+  const computedDiscount =
+    discountType === 'percent'
+      ? Math.min(totalAmount, (totalAmount * rawDiscount) / 100)
+      : Math.min(totalAmount, rawDiscount);
+  const finalPayableTotal = Math.max(0, totalAmount - computedDiscount);
+
+  // Sync cashReceived whenever payable total changes in checkout
+  useEffect(() => {
+    if (isCheckoutOpen && paymentMethod === 'efectivo') {
+      setCashReceived(finalPayableTotal.toFixed(2));
+    }
+  }, [finalPayableTotal, isCheckoutOpen, paymentMethod]);
 
   // Handle Barcode Scan
   const handleBarcodeScan = (barcode: string) => {
@@ -112,7 +155,7 @@ export const PosModule: React.FC<PosModuleProps> = ({
 
     // Search by barcode in products
     const product = products.find(
-      (p) => p.barcode.toLowerCase() === cleanCode.toLowerCase()
+      (p) => (p.barcode || '').toLowerCase() === cleanCode.toLowerCase()
     );
 
     if (product) {
@@ -126,7 +169,7 @@ export const PosModule: React.FC<PosModuleProps> = ({
     } else {
       // Check if it's an alias or part of name
       const byName = products.find(
-        (p) => p.name.toLowerCase().includes(cleanCode.toLowerCase()) && p.isActive !== false
+        (p) => (p.name || '').toLowerCase().includes(cleanCode.toLowerCase()) && p.isActive !== false
       );
       if (byName) {
         addProductToCart(byName);
@@ -251,9 +294,49 @@ export const PosModule: React.FC<PosModuleProps> = ({
     }
   };
 
+  // Hold current cart
+  const handleHoldCurrentCart = () => {
+    if (cart.length === 0) return;
+    const newHold: HeldSale = {
+      id: `held-${Date.now()}`,
+      label: `Ticket #${heldSales.length + 1} (${cart.length} art.)`,
+      timestamp: new Date().toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' }),
+      items: [...cart],
+    };
+    const updated = [newHold, ...heldSales];
+    setHeldSales(updated);
+    saveHeldSales(updated);
+    setCart([]);
+    showScanNotice('✓ Venta pausada en espera', 'warn');
+  };
+
+  // Resume a held cart
+  const handleResumeHeldCart = (heldId: string) => {
+    const target = heldSales.find((h) => h.id === heldId);
+    if (!target) return;
+    if (cart.length > 0) {
+      if (!window.confirm('¿Deseas reemplazar el ticket actual con la venta en espera?')) return;
+    }
+    setCart(target.items);
+    const remaining = heldSales.filter((h) => h.id !== heldId);
+    setHeldSales(remaining);
+    saveHeldSales(remaining);
+    setShowHeldDrawer(false);
+    showScanNotice('✓ Venta en espera retomada', 'success');
+  };
+
+  // Delete held cart
+  const handleDeleteHeldCart = (heldId: string) => {
+    const remaining = heldSales.filter((h) => h.id !== heldId);
+    setHeldSales(remaining);
+    saveHeldSales(remaining);
+  };
+
   // Open Checkout (F2)
   const openCheckout = () => {
     if (cart.length === 0) return;
+    setIsDiscountEnabled(false);
+    setDiscountValue('5');
     setCashReceived(totalAmount.toFixed(2));
     setCardReference('');
     setPaymentMethod('efectivo');
@@ -269,23 +352,26 @@ export const PosModule: React.FC<PosModuleProps> = ({
     }
 
     const receivedNum = parseFloat(cashReceived) || 0;
-    if (paymentMethod === 'efectivo' && receivedNum < totalAmount) {
-      alert('El efectivo recibido es menor al total de la venta.');
+    if (paymentMethod === 'efectivo' && receivedNum < finalPayableTotal) {
+      alert('El efectivo recibido es menor al total a pagar.');
       return;
     }
 
-    const change = paymentMethod === 'efectivo' ? Math.max(0, receivedNum - totalAmount) : 0;
+    const change = paymentMethod === 'efectivo' ? Math.max(0, receivedNum - finalPayableTotal) : 0;
 
     const newSale: Sale = {
       id: `TK-${Date.now().toString().slice(-6)}`,
       folio: Math.floor(1000 + Math.random() * 9000),
       date: new Date().toISOString(),
       items: [...cart],
-      total: Number(totalAmount.toFixed(2)),
+      total: Number(finalPayableTotal.toFixed(2)),
+      originalTotal: Number(totalAmount.toFixed(2)),
+      discount: computedDiscount > 0 ? Number(computedDiscount.toFixed(2)) : undefined,
+      discountType: computedDiscount > 0 ? discountType : undefined,
       costTotal: Number(totalCost.toFixed(2)),
-      profit: Number((totalAmount - totalCost).toFixed(2)),
+      profit: Number((finalPayableTotal - totalCost).toFixed(2)),
       paymentMethod,
-      cashReceived: paymentMethod === 'efectivo' ? receivedNum : totalAmount,
+      cashReceived: paymentMethod === 'efectivo' ? receivedNum : finalPayableTotal,
       change: Number(change.toFixed(2)),
       cardReference: paymentMethod === 'tarjeta' ? cardReference : undefined,
       cashShiftId: activeShift.id,
@@ -317,12 +403,11 @@ export const PosModule: React.FC<PosModuleProps> = ({
     const term = searchTerm.toLowerCase().trim();
     if (!term) return matchesCategory;
 
-    return (
-      matchesCategory &&
-      (prod.name.toLowerCase().includes(term) ||
-        prod.barcode.toLowerCase().includes(term) ||
-        prod.brand.toLowerCase().includes(term))
-    );
+    const nameMatch = (prod.name || '').toLowerCase().includes(term);
+    const barcodeMatch = (prod.barcode || '').toLowerCase().includes(term);
+    const brandMatch = (prod.brand || '').toLowerCase().includes(term);
+
+    return matchesCategory && (nameMatch || barcodeMatch || brandMatch);
   });
 
   const activeServices = services.filter((s) => s.isActive !== false);
@@ -437,7 +522,7 @@ export const PosModule: React.FC<PosModuleProps> = ({
             {/* Services Toggle Button (F8) */}
             <button
               onClick={() => setShowServices(!showServices)}
-              className={`flex items-center gap-2 px-4 py-2.5 sm:py-3 rounded-xl text-sm font-bold border transition cursor-pointer shrink-0 ${
+              className={`flex items-center gap-2 px-3 sm:px-4 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-bold border transition cursor-pointer shrink-0 ${
                 showServices
                   ? 'bg-[#1F4461] text-white border-[#1F4461]'
                   : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
@@ -446,6 +531,31 @@ export const PosModule: React.FC<PosModuleProps> = ({
               <Sparkles className="w-4 h-4 text-[#F3C16C]" />
               <span className="hidden sm:inline">Servicios</span>
               <span className="text-xs opacity-75 font-mono font-bold">F8</span>
+            </button>
+
+            {/* Tickets History Button */}
+            <button
+              onClick={() => setIsHistoryOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-bold border border-gray-300 bg-white hover:bg-gray-100 text-gray-700 transition cursor-pointer shrink-0"
+              title="Historial de tickets emitidos y cancelaciones"
+            >
+              <Receipt className="w-4 h-4 text-[#1F4461]" />
+              <span className="hidden md:inline">Tickets</span>
+            </button>
+
+            {/* Quotation Button */}
+            <button
+              disabled={cart.length === 0}
+              onClick={() => setIsQuotationOpen(true)}
+              className={`flex items-center gap-1.5 px-3 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-bold border transition cursor-pointer shrink-0 ${
+                cart.length > 0
+                  ? 'border-blue-300 bg-blue-50 text-blue-900 hover:bg-blue-100'
+                  : 'border-gray-200 bg-gray-50 text-gray-400 cursor-not-allowed'
+              }`}
+              title="Generar cotización o presupuesto de lista escolar"
+            >
+              <FileSpreadsheet className="w-4 h-4 text-blue-600" />
+              <span className="hidden md:inline">Cotizar</span>
             </button>
           </div>
 
@@ -638,17 +748,92 @@ export const PosModule: React.FC<PosModuleProps> = ({
             </span>
           </div>
 
-          {cart.length > 0 && (
-            <button
-              onClick={handleClearCart}
-              className="flex items-center gap-1 text-xs text-red-600 hover:text-red-700 font-bold px-2.5 py-1 rounded-lg hover:bg-red-50 transition cursor-pointer"
-              title="Vaciar ticket completo (F9)"
-            >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>Vaciar (F9)</span>
-            </button>
-          )}
+          <div className="flex items-center gap-1.5">
+            {/* Pause Cart Button */}
+            {cart.length > 0 && (
+              <button
+                onClick={handleHoldCurrentCart}
+                className="flex items-center gap-1 text-xs text-amber-800 bg-amber-50 hover:bg-amber-100 border border-amber-200 font-bold px-2 py-1 rounded-lg transition cursor-pointer"
+                title="Pausar venta actual y guardarla en espera"
+              >
+                <PauseCircle className="w-3.5 h-3.5 text-amber-600" />
+                <span className="hidden sm:inline">Pausar</span>
+              </button>
+            )}
+
+            {/* Held Carts Badge Button */}
+            {heldSales.length > 0 && (
+              <button
+                onClick={() => setShowHeldDrawer(!showHeldDrawer)}
+                className="flex items-center gap-1 text-xs text-emerald-800 bg-emerald-50 hover:bg-emerald-100 border border-emerald-300 font-bold px-2 py-1 rounded-lg transition cursor-pointer"
+                title="Ver ventas en espera"
+              >
+                <PlayCircle className="w-3.5 h-3.5 text-emerald-600 animate-pulse" />
+                <span>En Espera ({heldSales.length})</span>
+              </button>
+            )}
+
+            {cart.length > 0 && (
+              <button
+                onClick={handleClearCart}
+                className="flex items-center gap-1 text-xs text-red-600 hover:text-red-700 font-bold px-2 py-1 rounded-lg hover:bg-red-50 transition cursor-pointer"
+                title="Vaciar ticket completo (F9)"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Vaciar</span>
+              </button>
+            )}
+          </div>
         </div>
+
+        {/* Held Carts Drawer */}
+        {showHeldDrawer && heldSales.length > 0 && (
+          <div className="p-3 bg-amber-50/90 border-b border-amber-200 space-y-2">
+            <div className="flex items-center justify-between text-xs font-bold text-amber-900">
+              <span className="flex items-center gap-1">
+                <Clock className="w-3.5 h-3.5 text-amber-700" />
+                Ventas Pausadas en Espera ({heldSales.length})
+              </span>
+              <button
+                onClick={() => setShowHeldDrawer(false)}
+                className="text-gray-400 hover:text-gray-600 text-xs p-0.5 rounded cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="space-y-1.5 max-h-44 overflow-y-auto">
+              {heldSales.map((held) => {
+                const heldTotal = held.items.reduce((s, it) => s + it.subtotal, 0);
+                return (
+                  <div
+                    key={held.id}
+                    className="p-2 rounded-xl bg-white border border-amber-200 flex items-center justify-between gap-2 shadow-2xs text-xs"
+                  >
+                    <div className="min-w-0">
+                      <span className="font-bold text-gray-800 block truncate">{held.label}</span>
+                      <span className="text-[10px] text-gray-400">Hora: {held.timestamp} • ${heldTotal.toFixed(2)}</span>
+                    </div>
+                    <div className="flex items-center gap-1 shrink-0">
+                      <button
+                        onClick={() => handleResumeHeldCart(held.id)}
+                        className="px-2.5 py-1 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] transition cursor-pointer"
+                      >
+                        Retomar
+                      </button>
+                      <button
+                        onClick={() => handleDeleteHeldCart(held.id)}
+                        className="p-1 rounded-lg hover:bg-red-50 text-red-500 transition cursor-pointer"
+                        title="Eliminar de espera"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Cart Items List */}
         <div className="flex-1 overflow-y-auto p-3.5 space-y-2.5 max-h-[calc(100vh-320px)] lg:max-h-none">
@@ -765,12 +950,67 @@ export const PosModule: React.FC<PosModuleProps> = ({
               </div>
               <div className="text-right">
                 <span className="text-xs text-gray-300 block uppercase font-bold tracking-wider">Total a pagar:</span>
-                <span className="text-3xl font-black text-[#9CC55B] font-mono">${totalAmount.toFixed(2)}</span>
+                <span className="text-3xl font-black text-[#9CC55B] font-mono">${finalPayableTotal.toFixed(2)}</span>
               </div>
             </div>
 
             {/* Modal Body */}
-            <div className="p-6 space-y-5">
+            <div className="p-6 space-y-4">
+              {/* Discount Section */}
+              <div className="p-3.5 rounded-2xl bg-amber-50/70 border border-amber-200/80">
+                <div className="flex items-center justify-between">
+                  <label className="flex items-center gap-2 text-xs font-bold text-amber-950 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={isDiscountEnabled}
+                      onChange={(e) => setIsDiscountEnabled(e.target.checked)}
+                      className="rounded text-[#1F4461] focus:ring-[#1F4461] w-4 h-4 cursor-pointer"
+                    />
+                    <Tag className="w-4 h-4 text-amber-700" />
+                    <span>Aplicar Descuento al Ticket</span>
+                  </label>
+                  {isDiscountEnabled && computedDiscount > 0 && (
+                    <span className="text-xs font-black font-mono text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-md">
+                      Ahorro: -${computedDiscount.toFixed(2)}
+                    </span>
+                  )}
+                </div>
+
+                {isDiscountEnabled && (
+                  <div className="mt-2.5 pt-2.5 border-t border-amber-200/60 flex items-center gap-2 flex-wrap">
+                    <div className="flex rounded-xl overflow-hidden border border-amber-300 text-xs font-bold shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => setDiscountType('percent')}
+                        className={`px-2.5 py-1.5 transition cursor-pointer ${discountType === 'percent' ? 'bg-[#1F4461] text-white' : 'bg-white text-gray-700'}`}
+                      >
+                        % Porcentaje
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setDiscountType('amount')}
+                        className={`px-2.5 py-1.5 transition cursor-pointer ${discountType === 'amount' ? 'bg-[#1F4461] text-white' : 'bg-white text-gray-700'}`}
+                      >
+                        $ Cantidad fija
+                      </button>
+                    </div>
+                    <input
+                      type="number"
+                      step={discountType === 'percent' ? '1' : '0.50'}
+                      min="0"
+                      max={discountType === 'percent' ? '100' : totalAmount}
+                      value={discountValue}
+                      onChange={(e) => setDiscountValue(e.target.value)}
+                      className="w-24 px-3 py-1.5 text-xs sm:text-sm font-bold border border-amber-300 rounded-xl bg-white focus:ring-2 focus:ring-[#1F4461] outline-hidden font-mono"
+                      placeholder="0"
+                    />
+                    <span className="text-xs text-gray-600 font-medium ml-auto">
+                      Subtotal: <span className="line-through text-gray-400 font-mono">${totalAmount.toFixed(2)}</span>
+                    </span>
+                  </div>
+                )}
+              </div>
+
               {/* Payment Method Switcher */}
               <div className="grid grid-cols-2 gap-3 p-1.5 bg-gray-100 rounded-2xl">
                 <button
@@ -822,35 +1062,45 @@ export const PosModule: React.FC<PosModuleProps> = ({
 
                   {/* Fast Tender Buttons ($20, $50, $100, $200, $500, Exacto) */}
                   <div className="flex flex-wrap gap-2.5">
-                    {cashSuggestions.map((item, idx) => (
-                      <button
-                        key={idx}
-                        onClick={() => setCashReceived(item.value.toString())}
-                        className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-bold text-gray-800 border border-gray-300/80 transition cursor-pointer"
-                      >
-                        {item.label}
-                      </button>
-                    ))}
+                    {[
+                      { label: 'Exacto', value: finalPayableTotal },
+                      { label: '$20', value: 20 },
+                      { label: '$50', value: 50 },
+                      { label: '$100', value: 100 },
+                      { label: '$200', value: 200 },
+                      { label: '$500', value: 500 },
+                    ]
+                      .filter((s) => s.value >= finalPayableTotal || s.label === 'Exacto')
+                      .map((item, idx) => (
+                        <button
+                          key={idx}
+                          type="button"
+                          onClick={() => setCashReceived(item.value.toString())}
+                          className="px-4 py-2 rounded-xl bg-gray-100 hover:bg-gray-200 text-sm font-bold text-gray-800 border border-gray-300/80 transition cursor-pointer"
+                        >
+                          {item.label}
+                        </button>
+                      ))}
                   </div>
 
                   {/* Change Output Card */}
                   <div
                     className={`p-4 rounded-2xl border flex items-center justify-between ${
-                      parsedReceived >= totalAmount
+                      parsedReceived >= finalPayableTotal
                         ? 'bg-emerald-50 border-emerald-200 text-emerald-950'
                         : 'bg-amber-50 border-amber-200 text-amber-950'
                     }`}
                   >
                     <div>
                       <span className="text-sm font-extrabold uppercase tracking-wide block">
-                        {parsedReceived >= totalAmount ? 'Cambio a entregar:' : 'Falta dinero:'}
+                        {parsedReceived >= finalPayableTotal ? 'Cambio a entregar:' : 'Falta dinero:'}
                       </span>
                       <span className="text-xs opacity-75 font-semibold">
                         Recibido: ${parsedReceived.toFixed(2)}
                       </span>
                     </div>
                     <span className="text-3xl font-black font-mono">
-                      ${calculatedChange.toFixed(2)}
+                      ${Math.max(0, parsedReceived - finalPayableTotal).toFixed(2)}
                     </span>
                   </div>
                 </div>
@@ -872,7 +1122,7 @@ export const PosModule: React.FC<PosModuleProps> = ({
                   </div>
                   <div className="p-3.5 rounded-2xl bg-blue-50 border border-blue-200 text-sm text-blue-900 flex items-center gap-2.5 font-medium">
                     <CreditCard className="w-5 h-5 text-blue-600 shrink-0" />
-                    <span>Se registrará un cargo de <strong className="font-extrabold font-mono text-base">${totalAmount.toFixed(2)}</strong> a la terminal bancaria.</span>
+                    <span>Se registrará un cargo de <strong className="font-extrabold font-mono text-base">${finalPayableTotal.toFixed(2)}</strong> a la terminal bancaria.</span>
                   </div>
                 </div>
               )}
@@ -887,10 +1137,10 @@ export const PosModule: React.FC<PosModuleProps> = ({
                 Cancelar (ESC)
               </button>
               <button
-                disabled={paymentMethod === 'efectivo' && parsedReceived < totalAmount}
+                disabled={paymentMethod === 'efectivo' && parsedReceived < finalPayableTotal}
                 onClick={handleFinishCheckout}
                 className={`px-6 py-3.5 rounded-xl text-base font-black shadow-md transition cursor-pointer flex items-center gap-2.5 ${
-                  paymentMethod === 'efectivo' && parsedReceived < totalAmount
+                  paymentMethod === 'efectivo' && parsedReceived < finalPayableTotal
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none'
                     : 'bg-[#9CC55B] hover:bg-[#8bb44c] text-[#1F4461] hover:shadow-lg active:scale-98'
                 }`}
@@ -914,6 +1164,23 @@ export const PosModule: React.FC<PosModuleProps> = ({
           }}
         />
       )}
+
+      {/* RECEIPT HISTORY & RETURN MODAL */}
+      <ReceiptHistoryModal
+        isOpen={isHistoryOpen}
+        onClose={() => setIsHistoryOpen(false)}
+        sales={sales}
+        userRole={userRole}
+        onCancelSale={onCancelSale}
+      />
+
+      {/* QUOTATION MODAL */}
+      <QuotationModal
+        cart={cart}
+        isOpen={isQuotationOpen}
+        onClose={() => setIsQuotationOpen(false)}
+        onClearCart={() => setCart([])}
+      />
     </div>
   );
 };

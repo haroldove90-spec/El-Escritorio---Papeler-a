@@ -1,3 +1,87 @@
+// SCRIPT EXCLUSIVO PARA LA TABLA DE PRODUCTOS
+export const PRODUCTS_ONLY_SQL = `-- ==============================================================================
+-- SCRIPT SQL PARA TABLA DE PRODUCTOS (CATÁLOGO E INVENTARIO) EN SUPABASE
+-- ==============================================================================
+
+CREATE TABLE IF NOT EXISTS products (
+  id TEXT PRIMARY KEY,
+  barcode TEXT UNIQUE NOT NULL,
+  name TEXT NOT NULL,
+  category TEXT NOT NULL,
+  brand TEXT,
+  cost_price NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+  sale_price NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+  stock INT NOT NULL DEFAULT 0,
+  min_stock INT NOT NULL DEFAULT 5,
+  unit_type TEXT NOT NULL DEFAULT 'pieza', -- 'pieza' o 'paquete'
+  package_units INT DEFAULT 1,
+  package_cost_price NUMERIC(10,2),
+  package_sale_price NUMERIC(10,2),
+  is_active BOOLEAN NOT NULL DEFAULT true,
+  is_service BOOLEAN NOT NULL DEFAULT false,
+  image_url TEXT,
+  created_at TIMESTAMPTZ DEFAULT now(),
+  last_restock_date TIMESTAMPTZ DEFAULT now()
+);
+
+-- Índices recomendados para búsquedas ultrarrápidas
+CREATE INDEX IF NOT EXISTS idx_products_barcode ON products (barcode);
+CREATE INDEX IF NOT EXISTS idx_products_category ON products (category);
+
+-- Desactivar Row Level Security (RLS) para permitir guardar directamente desde el sistema
+ALTER TABLE products DISABLE ROW LEVEL SECURITY;
+
+-- Política de acceso total para roles anon y authenticated
+DROP POLICY IF EXISTS "anon_full_access_products" ON products;
+CREATE POLICY "anon_full_access_products" ON products
+  FOR ALL TO anon, authenticated
+  USING (true)
+  WITH CHECK (true);
+`;
+
+// SCRIPT EXCLUSIVO PARA TABLAS DE COMPRAS Y ENTRADAS DE MERCANCÍA
+export const PURCHASES_ONLY_SQL = `-- ==============================================================================
+-- TABLAS DE COMPRAS Y RECEPCIÓN DE MERCANCÍA EN SUPABASE (POSTGRESQL)
+-- ==============================================================================
+
+-- 1. Tabla de Facturas y Compras a Proveedores
+CREATE TABLE IF NOT EXISTS purchases (
+  id TEXT PRIMARY KEY,
+  supplier TEXT NOT NULL,
+  invoice_number TEXT,
+  date TIMESTAMPTZ DEFAULT now(),
+  total NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+  notes TEXT
+);
+
+-- 2. Tabla de Artículos Ingresados en la Compra
+CREATE TABLE IF NOT EXISTS purchase_items (
+  id TEXT PRIMARY KEY,
+  purchase_id TEXT REFERENCES purchases(id) ON DELETE CASCADE,
+  product_id TEXT,
+  product_name TEXT NOT NULL,
+  barcode TEXT,
+  quantity INT NOT NULL DEFAULT 1,
+  cost_price NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+  subtotal NUMERIC(10,2) NOT NULL DEFAULT 0.00
+);
+
+-- Índices de consulta rápida
+CREATE INDEX IF NOT EXISTS idx_purchases_date ON purchases (date DESC);
+CREATE INDEX IF NOT EXISTS idx_purchase_items_purchase_id ON purchase_items (purchase_id);
+
+-- Desactivar Row Level Security (RLS) para permitir escritura directa
+ALTER TABLE purchases DISABLE ROW LEVEL SECURITY;
+ALTER TABLE purchase_items DISABLE ROW LEVEL SECURITY;
+
+-- Políticas universales de acceso anon y authenticated
+DROP POLICY IF EXISTS "anon_full_access_purchases" ON purchases;
+CREATE POLICY "anon_full_access_purchases" ON purchases FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+
+DROP POLICY IF EXISTS "anon_full_access_purchase_items" ON purchase_items;
+CREATE POLICY "anon_full_access_purchase_items" ON purchase_items FOR ALL TO anon, authenticated USING (true) WITH CHECK (true);
+`;
+
 export const FULL_SUPABASE_SQL_WITH_SAMPLE_DATA = `-- ==============================================================================
 -- BASE DE DATOS COMPLETA PARA PAPELERÍA EL ESCRITORIO (SUPABASE / POSTGRESQL)
 -- Proyecto: papeleria@appdesignsoftware.com's Project (lgaocnmbdzakianuvzlf)
@@ -99,8 +183,17 @@ CREATE TABLE IF NOT EXISTS sales (
   cash_shift_id TEXT,
   cashier_name TEXT NOT NULL,
   status TEXT NOT NULL DEFAULT 'completada', -- 'completada' o 'cancelada'
-  canceled_reason TEXT
+  canceled_reason TEXT,
+  original_total NUMERIC(10,2),
+  discount NUMERIC(10,2) DEFAULT 0.00,
+  discount_type TEXT -- 'percent' o 'amount'
 );
+
+-- Migraciones seguras para tablas ya existentes
+ALTER TABLE sales ADD COLUMN IF NOT EXISTS canceled_reason TEXT;
+ALTER TABLE sales ADD COLUMN IF NOT EXISTS original_total NUMERIC(10,2);
+ALTER TABLE sales ADD COLUMN IF NOT EXISTS discount NUMERIC(10,2) DEFAULT 0.00;
+ALTER TABLE sales ADD COLUMN IF NOT EXISTS discount_type TEXT;
 
 -- 7. TABLA DE ARTÍCULOS VENDIDOS POR TICKET
 CREATE TABLE IF NOT EXISTS sale_items (
@@ -274,4 +367,34 @@ VALUES
 ('pur-1', 'Distribuidora Papelera Nacional S.A.', 'FAC-8921', now() - interval '2 day', 2650.00, 'Surtido mensual de cuadernos y hojas bond'),
 ('pur-2', 'Mayorista Escolar del Centro', 'FAC-4402', now() - interval '1 day', 1480.00, 'Bolígrafos BIC y adhesivos Pritt')
 ON CONFLICT (id) DO NOTHING;
+
+-- ==============================================================================
+-- HABILITACIÓN SEGURA DE SUPABASE REALTIME (IDEMPOTENTE - EVITA ERROR 42710)
+-- ==============================================================================
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM pg_publication WHERE pubname = 'supabase_realtime') THEN
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'products') THEN
+      ALTER PUBLICATION supabase_realtime ADD TABLE products;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'sales') THEN
+      ALTER PUBLICATION supabase_realtime ADD TABLE sales;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'sale_items') THEN
+      ALTER PUBLICATION supabase_realtime ADD TABLE sale_items;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'purchases') THEN
+      ALTER PUBLICATION supabase_realtime ADD TABLE purchases;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'purchase_items') THEN
+      ALTER PUBLICATION supabase_realtime ADD TABLE purchase_items;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'cash_shifts') THEN
+      ALTER PUBLICATION supabase_realtime ADD TABLE cash_shifts;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM pg_publication_tables WHERE pubname = 'supabase_realtime' AND tablename = 'users') THEN
+      ALTER PUBLICATION supabase_realtime ADD TABLE users;
+    END IF;
+  END IF;
+END $$;
 `;

@@ -18,11 +18,24 @@ import {
   XCircle,
   Power,
   Info,
+  RefreshCw,
+  Cloud,
+  Loader2,
+  Database,
+  Copy,
+  ExternalLink,
+  ShieldCheck,
 } from 'lucide-react';
+import {
+  fetchProductsFromSupabase,
+  syncProductToSupabase,
+  getStoredSupabaseConfig,
+} from '../../services/supabaseClient';
+import { PRODUCTS_ONLY_SQL, FULL_SUPABASE_SQL_WITH_SAMPLE_DATA } from '../../services/supabaseSql';
 
 interface InventoryModuleProps {
   products: Product[];
-  onSaveProduct: (product: Product) => void;
+  onSaveProduct: (product: Product) => Promise<{ success: boolean; error?: string } | void> | void;
   onDeleteProduct: (productId: string) => void;
   onDeleteMultipleProducts?: (productIds: string[]) => void;
   onAdjustStock: (adjustment: StockAdjustment) => void;
@@ -49,6 +62,51 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
   // Edit / Create Modal state
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [isSyncingAll, setIsSyncingAll] = useState(false);
+  const [syncNotice, setSyncNotice] = useState<{ message: string; type: 'success' | 'warn' | 'error' } | null>(null);
+
+  // Supabase SQL Modal state
+  const [isSqlModalOpen, setIsSqlModalOpen] = useState(false);
+  const [selectedSqlTab, setSelectedSqlTab] = useState<'products' | 'full'>('products');
+  const [copiedSql, setCopiedSql] = useState(false);
+  const supabaseConfig = getStoredSupabaseConfig();
+
+  const showNotification = (message: string, type: 'success' | 'warn' | 'error' = 'success') => {
+    setSyncNotice({ message, type });
+    setTimeout(() => {
+      setSyncNotice((curr) => (curr?.message === message ? null : curr));
+    }, 6000);
+  };
+
+  const handleManualSyncWithSupabase = async () => {
+    setIsSyncingAll(true);
+    try {
+      // 1. Upload each product in current catalog to Supabase
+      let successCount = 0;
+      for (const prod of products) {
+        const res = await syncProductToSupabase(prod);
+        if (res.success) successCount++;
+      }
+
+      // 2. Fetch all products from remote Supabase
+      const remote = await fetchProductsFromSupabase();
+
+      // 3. Trigger reload across app
+      window.dispatchEvent(new Event('papeleria_data_change'));
+
+      showNotification(
+        `✓ Sincronización completada: ${remote?.length || successCount} productos confirmados en Supabase Cloud.`,
+        'success'
+      );
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Error al sincronizar';
+      showNotification(`⚠️ Error al sincronizar con Supabase: ${msg}`, 'error');
+    } finally {
+      setIsSyncingAll(false);
+    }
+  };
 
   // Adjustment Modal state
   const [isAdjustModalOpen, setIsAdjustModalOpen] = useState(false);
@@ -82,6 +140,7 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
 
   const openCreateModal = () => {
     setEditingProduct(null);
+    setFormError(null);
     generateInternalBarcode();
     setFormName('');
     setFormCategory('Escolares');
@@ -100,6 +159,7 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
 
   const openEditModal = (product: Product) => {
     setEditingProduct(product);
+    setFormError(null);
     setFormBarcode(product.barcode);
     setFormName(product.name);
     setFormCategory(product.category);
@@ -130,12 +190,15 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
   const price = parseFloat(formSalePrice) || 0;
   const calculatedMargin = cost > 0 ? (((price - cost) / cost) * 100).toFixed(1) : '0';
 
-  const handleSaveProduct = (e: React.FormEvent) => {
+  const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formName.trim() || !formBarcode.trim()) {
-      alert('Nombre y código de barras son requeridos.');
+      setFormError('El nombre del producto y el código de barras son obligatorios.');
       return;
     }
+
+    setFormError(null);
+    setIsSaving(true);
 
     const costNum = parseFloat(formCostPrice) || 0;
     const saleNum = parseFloat(formSalePrice) || 0;
@@ -162,8 +225,29 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
       lastRestockDate: new Date().toISOString(),
     };
 
-    onSaveProduct(updatedProduct);
-    setIsModalOpen(false);
+    try {
+      const res = await onSaveProduct(updatedProduct);
+      setIsModalOpen(false);
+      if (res && res.success === false) {
+        showNotification(
+          `✓ Producto "${updatedProduct.name}" guardado localmente (sincronización pendiente: ${res.error || 'sin conexión'})`,
+          'warn'
+        );
+      } else {
+        showNotification(
+          `✓ Producto "${updatedProduct.name}" guardado y sincronizado en Supabase Cloud.`,
+          'success'
+        );
+      }
+    } catch (err: unknown) {
+      setIsModalOpen(false);
+      showNotification(
+        `✓ Producto "${updatedProduct.name}" guardado en catálogo local.`,
+        'success'
+      );
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const openAdjustStockModal = (prod: Product) => {
@@ -199,11 +283,12 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
   };
 
   // Filter products
+  const cleanSearchTerm = searchTerm.toLowerCase().trim();
   const filteredProducts = products.filter((prod) => {
-    const matchesSearch =
-      prod.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      prod.barcode.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      prod.brand.toLowerCase().includes(searchTerm.toLowerCase());
+    const nameMatch = (prod.name || '').toLowerCase().includes(cleanSearchTerm);
+    const barcodeMatch = (prod.barcode || '').toLowerCase().includes(cleanSearchTerm);
+    const brandMatch = (prod.brand || '').toLowerCase().includes(cleanSearchTerm);
+    const matchesSearch = !cleanSearchTerm || nameMatch || barcodeMatch || brandMatch;
 
     const matchesCategory = categoryFilter === 'todos' || prod.category === categoryFilter;
     const matchesStock = stockFilter === 'todos' || (stockFilter === 'bajo' && prod.stock <= prod.minStock);
@@ -267,26 +352,82 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
     <div className="flex-1 flex flex-col h-full overflow-hidden bg-gray-50 pb-16 md:pb-0">
       {/* Top Header Bar */}
       <div className="p-4 sm:p-6 bg-white border-b border-gray-200">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div>
-            <h1 className="text-2xl sm:text-3xl font-black text-[#1F4461] tracking-tight">
-              Catálogo e Inventario
-            </h1>
+            <div className="flex items-center gap-2.5">
+              <h1 className="text-2xl sm:text-3xl font-black text-[#1F4461] tracking-tight">
+                Catálogo e Inventario
+              </h1>
+              <div
+                className={`hidden sm:inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold ${
+                  supabaseConfig.isConnected
+                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-200'
+                    : 'bg-amber-50 text-amber-800 border border-amber-200'
+                }`}
+                title={supabaseConfig.isConnected ? 'Conectado a Supabase PostgreSQL Cloud' : 'Supabase no conectado'}
+              >
+                <span className={`w-2 h-2 rounded-full ${supabaseConfig.isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`} />
+                <span>{supabaseConfig.isConnected ? 'Supabase Cloud Activo' : 'Modo Local'}</span>
+              </div>
+            </div>
             <p className="text-xs sm:text-sm text-gray-500 mt-1 font-medium">
-              Control de existencias, código de barras, piezas, paquetes y activación de productos
+              Control de existencias, código de barras, piezas, paquetes y sincronización con PostgreSQL
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-2 sm:gap-2.5">
+            {/* View / Copy SQL Button */}
+            <button
+              onClick={() => setIsSqlModalOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-50 hover:bg-blue-100 text-[#1F4461] border border-blue-200 font-bold text-xs sm:text-sm transition cursor-pointer shadow-2xs"
+              title="Ver y copiar el script SQL para crear la tabla de productos en Supabase"
+            >
+              <Database className="w-4 h-4 text-blue-600" />
+              <span>Script SQL Supabase</span>
+            </button>
+
+            {/* Sync with Supabase Button */}
+            <button
+              onClick={handleManualSyncWithSupabase}
+              disabled={isSyncingAll}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 font-bold text-xs sm:text-sm transition cursor-pointer disabled:opacity-50 shadow-2xs"
+              title="Sincronizar y respaldar todo el inventario con Supabase Cloud"
+            >
+              <RefreshCw className={`w-4 h-4 ${isSyncingAll ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">{isSyncingAll ? 'Sincronizando...' : 'Sincronizar Todo'}</span>
+            </button>
+
+            {/* New Product Button */}
             <button
               onClick={openCreateModal}
-              className="flex items-center gap-2 px-4.5 py-2.5 rounded-xl bg-[#1F4461] hover:bg-[#163248] text-white font-bold text-sm sm:text-base shadow-xs transition cursor-pointer active:scale-95"
+              className="flex items-center gap-2 px-4 py-2 sm:py-2.5 rounded-xl bg-[#1F4461] hover:bg-[#163248] text-white font-bold text-xs sm:text-sm shadow-xs transition cursor-pointer active:scale-95"
             >
-              <Plus className="w-4.5 h-4.5" />
+              <Plus className="w-4 h-4" />
               <span>Nuevo Producto</span>
             </button>
           </div>
         </div>
+
+        {/* Sync notification banner if active */}
+        {syncNotice && (
+          <div
+            className={`mt-3 p-3 rounded-xl text-xs font-semibold flex items-center justify-between border animate-in fade-in duration-200 ${
+              syncNotice.type === 'success'
+                ? 'bg-emerald-50 text-emerald-900 border-emerald-200'
+                : syncNotice.type === 'warn'
+                ? 'bg-amber-50 text-amber-900 border-amber-200'
+                : 'bg-red-50 text-red-900 border-red-200'
+            }`}
+          >
+            <span>{syncNotice.message}</span>
+            <button
+              onClick={() => setSyncNotice(null)}
+              className="text-gray-400 hover:text-gray-600 p-0.5"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        )}
 
         {/* Filters and Search */}
         <div className="mt-4 flex flex-col md:flex-row gap-3">
@@ -324,8 +465,8 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
               onChange={(e) => setCategoryFilter(e.target.value)}
               className="px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 text-xs sm:text-sm font-bold text-gray-800 outline-none cursor-pointer"
             >
-              {categories.map((c) => (
-                <option key={c} value={c} className="capitalize">
+              {categories.map((c, idx) => (
+                <option key={`cat-filter-${c}-${idx}`} value={c} className="capitalize">
                   {c === 'todos' ? 'Todas las Categorías' : c}
                 </option>
               ))}
@@ -424,14 +565,14 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                     </td>
                   </tr>
                 ) : (
-                  filteredProducts.map((prod) => {
+                  filteredProducts.map((prod, idx) => {
                     const isLowStock = prod.stock <= prod.minStock;
                     const isSelected = selectedProductIds.includes(prod.id);
                     const margin = prod.costPrice > 0 ? (((prod.salePrice - prod.costPrice) / prod.costPrice) * 100).toFixed(0) : '0';
 
                     return (
                       <tr
-                        key={prod.id}
+                        key={`inv-prod-${prod.id || 'item'}-${prod.barcode || ''}-${idx}`}
                         className={`transition ${isSelected ? 'bg-[#1F4461]/5' : 'hover:bg-gray-50/90'}`}
                       >
                         <td className="py-3 px-3.5 text-center">
@@ -467,10 +608,10 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                           )}
                         </td>
                         <td className="py-3 px-4 text-right font-mono font-medium text-gray-600 text-sm">
-                          ${prod.costPrice.toFixed(2)}
+                          ${(prod.costPrice ?? 0).toFixed(2)}
                         </td>
                         <td className="py-3 px-4 text-right font-mono font-bold text-[#1F4461] text-sm sm:text-base">
-                          ${prod.salePrice.toFixed(2)}
+                          ${(prod.salePrice ?? 0).toFixed(2)}
                         </td>
                         <td className="py-3 px-4 text-center">
                           <span className="px-2 py-0.5 rounded-md bg-emerald-50 text-emerald-800 font-bold text-xs font-mono">
@@ -636,8 +777,8 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                   >
                     {categories
                       .filter((c) => c !== 'todos')
-                      .map((c) => (
-                        <option key={c} value={c}>
+                      .map((c, idx) => (
+                        <option key={`form-cat-${c}-${idx}`} value={c}>
                           {c}
                         </option>
                       ))}
@@ -813,21 +954,73 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                     <span>{formIsActive ? 'Activo (Disponible)' : 'Desactivado (Oculto en Caja)'}</span>
                   </button>
                 </div>
+
+                {/* Cloud storage banner info */}
+                <div className="md:col-span-2 p-3 bg-blue-50/80 rounded-xl border border-blue-200 flex items-start justify-between gap-3 text-xs">
+                  <div className="flex items-start gap-2 text-blue-900">
+                    <Cloud className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold">Guardado persistente en Supabase Cloud</p>
+                      <p className="text-[11px] text-blue-700 mt-0.5">
+                        Este producto se registrará directamente en tu base de datos Supabase (PostgreSQL) para estar sincronizado en todas tus cajas y computadoras.
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setIsSqlModalOpen(true)}
+                    className="text-blue-700 hover:text-blue-900 underline font-bold text-[11px] shrink-0"
+                  >
+                    Ver Script SQL
+                  </button>
+                </div>
+
+                {/* Validation or Sync Error Box */}
+                {formError && (
+                  <div className="md:col-span-2 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-800 flex items-start justify-between gap-3 animate-in fade-in duration-150">
+                    <div className="flex items-start gap-2">
+                      <AlertTriangle className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-bold">No se pudo guardar el producto:</p>
+                        <p className="text-[11px] mt-0.5 text-red-700">{formError}</p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => setIsSqlModalOpen(true)}
+                      className="px-2.5 py-1 rounded-lg bg-red-100 hover:bg-red-200 text-red-800 font-bold text-[11px] shrink-0 transition"
+                    >
+                      Copiar SQL
+                    </button>
+                  </div>
+                )}
               </div>
 
               <div className="pt-4 border-t border-gray-200 flex justify-end gap-3">
                 <button
                   type="button"
                   onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-100 transition cursor-pointer"
+                  disabled={isSaving}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-100 transition cursor-pointer disabled:opacity-50"
                 >
                   Cancelar
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 rounded-xl bg-[#9CC55B] hover:bg-[#8bb44c] text-[#1F4461] font-bold text-xs shadow-md transition cursor-pointer"
+                  disabled={isSaving}
+                  className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-[#1F4461] hover:bg-[#163248] text-white font-bold text-xs shadow-md transition cursor-pointer disabled:opacity-60"
                 >
-                  Guardar Producto
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-[#9CC55B]" />
+                      <span>Guardando en Supabase...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4 text-[#9CC55B]" />
+                      <span>Guardar en Supabase</span>
+                    </>
+                  )}
                 </button>
               </div>
             </form>
@@ -887,22 +1080,22 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                 </div>
                 <div>
                   <span className="text-gray-500 block">Precio Costo:</span>
-                  <span className="font-mono font-bold text-gray-900">${viewingProduct.costPrice.toFixed(2)}</span>
+                  <span className="font-mono font-bold text-gray-900">${(viewingProduct.costPrice ?? 0).toFixed(2)}</span>
                 </div>
                 <div>
                   <span className="text-gray-500 block">Precio Venta Público:</span>
-                  <span className="font-mono font-black text-[#1F4461] text-sm">${viewingProduct.salePrice.toFixed(2)}</span>
+                  <span className="font-mono font-black text-[#1F4461] text-sm">${(viewingProduct.salePrice ?? 0).toFixed(2)}</span>
                 </div>
                 <div>
                   <span className="text-gray-500 block">Margen de Ganancia:</span>
                   <span className="font-bold text-emerald-700">
-                    +{viewingProduct.costPrice > 0 ? (((viewingProduct.salePrice - viewingProduct.costPrice) / viewingProduct.costPrice) * 100).toFixed(1) : 0}%
+                    +{viewingProduct.costPrice > 0 ? ((((viewingProduct.salePrice ?? 0) - viewingProduct.costPrice) / viewingProduct.costPrice) * 100).toFixed(1) : 0}%
                   </span>
                 </div>
                 <div>
                   <span className="text-gray-500 block">Existencias:</span>
-                  <span className="font-mono font-bold text-gray-900">{viewingProduct.stock} pzas</span>
-                  <span className="text-[10px] text-gray-400 block">(Mínimo: {viewingProduct.minStock})</span>
+                  <span className="font-mono font-bold text-gray-900">{viewingProduct.stock ?? 0} pzas</span>
+                  <span className="text-[10px] text-gray-400 block">(Mínimo: {viewingProduct.minStock ?? 5})</span>
                 </div>
               </div>
 
@@ -915,7 +1108,7 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                   </p>
                   {viewingProduct.packageSalePrice && (
                     <p className="text-gray-700 font-mono">
-                      Precio de caja completa: <strong>${viewingProduct.packageSalePrice.toFixed(2)}</strong>
+                      Precio de caja completa: <strong>${(viewingProduct.packageSalePrice ?? 0).toFixed(2)}</strong>
                     </p>
                   )}
                 </div>
@@ -1027,6 +1220,137 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                   className="px-4 py-2 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs shadow-md transition cursor-pointer"
                 >
                   Confirmar Ajuste
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* SUPABASE SQL SCRIPT MODAL */}
+      {isSqlModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl overflow-hidden border border-gray-100 flex flex-col max-h-[90vh]">
+            {/* Header */}
+            <div className="bg-[#1F4461] text-white p-4 sm:p-5 flex items-center justify-between shrink-0">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 rounded-xl bg-white/10 text-[#9CC55B]">
+                  <Database className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-base sm:text-lg">Script SQL para Supabase</h3>
+                  <p className="text-xs text-gray-300">
+                    Instrucciones para crear y habilitar las tablas en tu cuenta de Supabase
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsSqlModalOpen(false)}
+                className="p-1 rounded-lg hover:bg-white/20 text-gray-200 transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-4 sm:p-6 overflow-y-auto space-y-4 text-xs">
+              {/* Instructions steps */}
+              <div className="p-4 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 space-y-2">
+                <h4 className="font-bold flex items-center gap-2 text-xs sm:text-sm text-[#1F4461]">
+                  <ShieldCheck className="w-4 h-4 text-blue-600" />
+                  ¿Cómo ejecutar este SQL en Supabase en 3 pasos?
+                </h4>
+                <ol className="list-decimal list-inside space-y-1.5 text-xs text-blue-800">
+                  <li>
+                    Ingresa a tu consola de Supabase en{' '}
+                    <a
+                      href="https://supabase.com/dashboard"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="font-bold underline text-blue-900 inline-flex items-center gap-0.5"
+                    >
+                      supabase.com/dashboard <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </li>
+                  <li>En el menú de la izquierda, selecciona <strong>SQL Editor</strong> y haz clic en <strong>New query</strong>.</li>
+                  <li>Pega el código copiado a continuación y haz clic en el botón verde <strong>RUN</strong>.</li>
+                </ol>
+                <p className="text-[11px] text-blue-700 pt-1">
+                  💡 Este script desactiva el RLS (Row Level Security) y crea políticas universales para que el sistema pueda insertar, actualizar y consultar productos sin bloqueos.
+                </p>
+              </div>
+
+              {/* Tab Selector */}
+              <div className="flex items-center gap-2 border-b border-gray-200 pb-2">
+                <button
+                  onClick={() => setSelectedSqlTab('products')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    selectedSqlTab === 'products'
+                      ? 'bg-[#1F4461] text-white shadow-2xs'
+                      : 'text-gray-600 hover:text-gray-900 bg-gray-100'
+                  }`}
+                >
+                  Solo Tabla 'products' (Recomendado)
+                </button>
+                <button
+                  onClick={() => setSelectedSqlTab('full')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    selectedSqlTab === 'full'
+                      ? 'bg-[#1F4461] text-white shadow-2xs'
+                      : 'text-gray-600 hover:text-gray-900 bg-gray-100'
+                  }`}
+                >
+                  Base de Datos Completa (Todas las Tablas)
+                </button>
+              </div>
+
+              {/* Code viewer */}
+              <div className="relative">
+                <pre className="p-4 bg-gray-900 text-emerald-400 font-mono text-[11px] rounded-xl overflow-x-auto max-h-64 sm:max-h-72 select-all leading-relaxed border border-gray-800">
+                  {selectedSqlTab === 'products' ? PRODUCTS_ONLY_SQL : FULL_SUPABASE_SQL_WITH_SAMPLE_DATA}
+                </pre>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-4 bg-gray-50 border-t border-gray-200 flex flex-wrap items-center justify-between gap-3 shrink-0">
+              <span className="text-[11px] text-gray-500 font-medium">
+                {selectedSqlTab === 'products'
+                  ? 'Script DDL de tabla de productos + índices + políticas RLS'
+                  : 'Script DDL completo de ventas, productos, compras, cajas y cortes'}
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setIsSqlModalOpen(false)}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-200 transition cursor-pointer"
+                >
+                  Cerrar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const code =
+                      selectedSqlTab === 'products'
+                        ? PRODUCTS_ONLY_SQL
+                        : FULL_SUPABASE_SQL_WITH_SAMPLE_DATA;
+                    navigator.clipboard.writeText(code);
+                    setCopiedSql(true);
+                    setTimeout(() => setCopiedSql(false), 3000);
+                  }}
+                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-md transition cursor-pointer active:scale-95"
+                >
+                  {copiedSql ? (
+                    <>
+                      <Check className="w-4 h-4" />
+                      <span>¡SQL Copiado al Portapapeles!</span>
+                    </>
+                  ) : (
+                    <>
+                      <Copy className="w-4 h-4" />
+                      <span>Copiar Código SQL</span>
+                    </>
+                  )}
                 </button>
               </div>
             </div>

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { UserAccount } from '../../types';
 import {
   User,
@@ -51,6 +51,24 @@ export const ProfileModule: React.FC<ProfileModuleProps> = ({
   const [isSavingPhoto, setIsSavingPhoto] = useState(false);
   const [isSavingData, setIsSavingData] = useState(false);
 
+  // Sync internal form state if currentUser changes from props / external sync
+  useEffect(() => {
+    setFullName(currentUser.fullName || '');
+    setEmail(currentUser.email || '');
+    setPhone(currentUser.phone || '');
+    setIdentification(currentUser.identification || '');
+    setAvatarUrl(currentUser.avatarUrl || '');
+    setUsername(currentUser.username || '');
+  }, [
+    currentUser.id,
+    currentUser.fullName,
+    currentUser.email,
+    currentUser.phone,
+    currentUser.identification,
+    currentUser.avatarUrl,
+    currentUser.username,
+  ]);
+
   const showNotification = (msg: string, isError = false) => {
     if (isError) {
       setErrorNotice(msg);
@@ -62,10 +80,10 @@ export const ProfileModule: React.FC<ProfileModuleProps> = ({
     setTimeout(() => {
       setSuccessNotice(null);
       setErrorNotice(null);
-    }, 4000);
+    }, 4500);
   };
 
-  // Image file upload handler (compresses to lightweight 160x160 JPEG for instant Supabase & localStorage save)
+  // Image file upload handler (square-crops & compresses to lightweight JPEG for instant Supabase & localStorage save)
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -80,36 +98,31 @@ export const ProfileModule: React.FC<ProfileModuleProps> = ({
       img.onload = async () => {
         try {
           const canvas = document.createElement('canvas');
-          const MAX_SIZE = 180;
-          let width = img.width;
-          let height = img.height;
+          const size = Math.min(img.width, img.height);
+          const startX = (img.width - size) / 2;
+          const startY = (img.height - size) / 2;
+          const TARGET_SIZE = 160;
 
-          if (width > height) {
-            if (width > MAX_SIZE) {
-              height = Math.round((height * MAX_SIZE) / width);
-              width = MAX_SIZE;
-            }
-          } else {
-            if (height > MAX_SIZE) {
-              width = Math.round((width * MAX_SIZE) / height);
-              height = MAX_SIZE;
-            }
-          }
-
-          canvas.width = width;
-          canvas.height = height;
+          canvas.width = TARGET_SIZE;
+          canvas.height = TARGET_SIZE;
           const ctx = canvas.getContext('2d');
 
           let finalImage = rawBase64;
           if (ctx) {
-            ctx.drawImage(img, 0, 0, width, height);
-            finalImage = canvas.toDataURL('image/jpeg', 0.75);
+            ctx.imageSmoothingEnabled = true;
+            ctx.imageSmoothingQuality = 'high';
+            ctx.drawImage(img, startX, startY, size, size, 0, 0, TARGET_SIZE, TARGET_SIZE);
+            finalImage = canvas.toDataURL('image/jpeg', 0.82);
           }
 
           setAvatarUrl(finalImage);
 
           const updated: UserAccount = {
             ...currentUser,
+            fullName: fullName.trim() || currentUser.fullName,
+            email: email.trim() || currentUser.email,
+            phone: phone.trim() || currentUser.phone,
+            identification: identification.trim() || currentUser.identification,
             avatarUrl: finalImage,
           };
 
@@ -125,10 +138,17 @@ export const ProfileModule: React.FC<ProfileModuleProps> = ({
           } else {
             showNotification(`Foto guardada localmente (${res.error || 'Verifica tu conexión a Supabase'}).`, true);
           }
-        } catch (err: unknown) {
+        } catch {
           setIsSavingPhoto(false);
           setAvatarUrl(rawBase64);
-          const updated = { ...currentUser, avatarUrl: rawBase64 };
+          const updated: UserAccount = {
+            ...currentUser,
+            fullName: fullName.trim() || currentUser.fullName,
+            email: email.trim() || currentUser.email,
+            phone: phone.trim() || currentUser.phone,
+            identification: identification.trim() || currentUser.identification,
+            avatarUrl: rawBase64,
+          };
           onUpdateProfile(updated);
           syncUserToSupabase(updated).catch(() => {});
           showNotification('✓ Foto de perfil actualizada localmente.');
@@ -144,6 +164,8 @@ export const ProfileModule: React.FC<ProfileModuleProps> = ({
     };
 
     reader.readAsDataURL(file);
+    // Reset file input target value to allow uploading the same file again if desired
+    e.target.value = '';
   };
 
   // Set avatar by URL
@@ -153,6 +175,10 @@ export const ProfileModule: React.FC<ProfileModuleProps> = ({
 
     const updated: UserAccount = {
       ...currentUser,
+      fullName: fullName.trim() || currentUser.fullName,
+      email: email.trim() || currentUser.email,
+      phone: phone.trim() || currentUser.phone,
+      identification: identification.trim() || currentUser.identification,
       avatarUrl: photoUrlInput.trim(),
     };
 
@@ -187,7 +213,7 @@ export const ProfileModule: React.FC<ProfileModuleProps> = ({
       email: email.trim(),
       phone: phone.trim() || undefined,
       identification: identification.trim() || undefined,
-      avatarUrl: avatarUrl.trim() || undefined,
+      avatarUrl: avatarUrl ? avatarUrl.trim() : currentUser.avatarUrl,
     };
 
     onUpdateProfile(updated);
@@ -195,7 +221,7 @@ export const ProfileModule: React.FC<ProfileModuleProps> = ({
     setIsSavingData(false);
 
     if (res.success) {
-      showNotification('✓ Datos personales guardados y sincronizados en Supabase.');
+      showNotification('✓ Datos personales y teléfono guardados en Supabase con éxito.');
     } else {
       showNotification(`Datos guardados localmente (${res.error || 'Verifica Supabase'}).`, true);
     }

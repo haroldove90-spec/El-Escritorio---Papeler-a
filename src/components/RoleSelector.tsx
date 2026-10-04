@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Lock, User, Eye, EyeOff, Sparkles, LogIn, AlertCircle, CheckCircle2, ShieldCheck, KeyRound } from 'lucide-react';
 import { PWAInstallButton } from './PWAInstallButton';
 import { UserAccount } from '../types';
+import { SAMPLE_USERS } from '../services/sampleData';
 
 interface RoleSelectorProps {
   users: UserAccount[];
@@ -37,9 +38,10 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
 
     setTimeout(() => {
       // Find matching user (case-insensitive username)
-      const matched = users.find(
+      const pool = users && users.length > 0 ? users : SAMPLE_USERS;
+      const matched = pool.find(
         (u) =>
-          u.username.toLowerCase() === cleanUser.toLowerCase() &&
+          (u?.username || '').toLowerCase() === cleanUser.toLowerCase() &&
           (u.password === cleanPass || cleanPass === 'Chevropar#1970')
       );
 
