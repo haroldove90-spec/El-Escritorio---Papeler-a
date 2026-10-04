@@ -88,13 +88,13 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
 
   const openEditModal = (user: UserAccount) => {
     setEditingUser(user);
-    setFormFullName(user.fullName);
-    setFormUsername(user.username);
-    setFormEmail(user.email);
+    setFormFullName(user.fullName || '');
+    setFormUsername(user.username || '');
+    setFormEmail(user.email || '');
     setFormPhone(user.phone || '');
-    setFormRole(user.role);
+    setFormRole(user.role || 'Cajero');
     setFormPassword(user.password || '');
-    setFormIsActive(user.isActive);
+    setFormIsActive(user.isActive !== false);
     setShowPassword(false);
     setIsModalOpen(true);
   };
@@ -228,7 +228,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
             <input
               type="text"
               placeholder="Buscar por nombre, usuario o correo..."
-              value={searchTerm}
+              value={searchTerm || ''}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 focus:bg-white focus:border-[#1F4461] text-sm font-medium outline-none transition"
             />
@@ -469,7 +469,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                 <input
                   type="text"
                   required
-                  value={formFullName}
+                  value={formFullName || ''}
                   onChange={(e) => setFormFullName(e.target.value)}
                   placeholder="Ej. Roberto Martínez García"
                   className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:border-[#1F4461] text-xs font-medium outline-none"
@@ -482,7 +482,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                   <input
                     type="text"
                     required
-                    value={formUsername}
+                    value={formUsername || ''}
                     onChange={(e) => setFormUsername(e.target.value.toLowerCase())}
                     placeholder="Ej. roberto1"
                     className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:border-[#1F4461] text-xs font-mono font-bold outline-none"
@@ -492,7 +492,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">Rol en el Sistema:</label>
                   <select
-                    value={formRole}
+                    value={formRole || 'Cajero'}
                     onChange={(e) => setFormRole(e.target.value as 'Admin' | 'Cajero')}
                     className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:border-[#1F4461] text-xs font-semibold outline-none"
                   >
@@ -507,7 +507,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                   <label className="block text-xs font-bold text-gray-700 mb-1">Teléfono / WhatsApp:</label>
                   <input
                     type="tel"
-                    value={formPhone}
+                    value={formPhone || ''}
                     onChange={(e) => setFormPhone(e.target.value)}
                     placeholder="Ej. 55 1234 5678"
                     className="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs outline-none"
@@ -517,7 +517,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                   <label className="block text-xs font-bold text-gray-700 mb-1">Correo Electrónico:</label>
                   <input
                     type="email"
-                    value={formEmail}
+                    value={formEmail || ''}
                     onChange={(e) => setFormEmail(e.target.value)}
                     placeholder="empleado@elescritorio.mx"
                     className="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs outline-none"
@@ -543,7 +543,7 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
                   <input
                     type={showPassword ? 'text' : 'password'}
                     required
-                    value={formPassword}
+                    value={formPassword || ''}
                     onChange={(e) => setFormPassword(e.target.value)}
                     className="w-full pl-3 pr-10 py-2 rounded-lg border border-gray-300 focus:border-[#1F4461] text-xs font-mono font-bold outline-none bg-white"
                   />

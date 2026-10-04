@@ -101,7 +101,7 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
                     type="text"
                     required
                     placeholder="Ej. Sra. Carmen López"
-                    value={customerName}
+                    value={customerName || ''}
                     onChange={(e) => setCustomerName(e.target.value)}
                     className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#1F4461] outline-hidden"
                   />
@@ -118,7 +118,7 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
                     <input
                       type="text"
                       placeholder="Ej. Primaria Benito Juárez - 3°A"
-                      value={schoolOrGrade}
+                      value={schoolOrGrade || ''}
                       onChange={(e) => setSchoolOrGrade(e.target.value)}
                       className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#1F4461] outline-hidden"
                     />
@@ -132,7 +132,7 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
                   <div className="relative">
                     <Calendar className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
                     <select
-                      value={validityDays}
+                      value={validityDays || 7}
                       onChange={(e) => setValidityDays(Number(e.target.value))}
                       className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#1F4461] outline-hidden bg-white"
                     >
@@ -150,7 +150,7 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
                 </label>
                 <textarea
                   rows={2}
-                  value={notes}
+                  value={notes || ''}
                   onChange={(e) => setNotes(e.target.value)}
                   className="w-full p-2.5 text-xs border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#1F4461] outline-hidden"
                 />

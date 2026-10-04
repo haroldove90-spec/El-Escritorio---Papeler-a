@@ -503,7 +503,7 @@ export const PosModule: React.FC<PosModuleProps> = ({
               <input
                 ref={searchInputRef}
                 type="text"
-                value={searchTerm}
+                value={searchTerm || ''}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && searchTerm.trim()) {
@@ -999,7 +999,7 @@ export const PosModule: React.FC<PosModuleProps> = ({
                       step={discountType === 'percent' ? '1' : '0.50'}
                       min="0"
                       max={discountType === 'percent' ? '100' : totalAmount}
-                      value={discountValue}
+                      value={discountValue || ''}
                       onChange={(e) => setDiscountValue(e.target.value)}
                       className="w-24 px-3 py-1.5 text-xs sm:text-sm font-bold border border-amber-300 rounded-xl bg-white focus:ring-2 focus:ring-[#1F4461] outline-hidden font-mono"
                       placeholder="0"
@@ -1050,7 +1050,7 @@ export const PosModule: React.FC<PosModuleProps> = ({
                         type="number"
                         step="0.50"
                         autoFocus
-                        value={cashReceived}
+                        value={cashReceived || ''}
                         onChange={(e) => setCashReceived(e.target.value)}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') handleFinishCheckout();
@@ -1115,7 +1115,7 @@ export const PosModule: React.FC<PosModuleProps> = ({
                       type="text"
                       maxLength={12}
                       placeholder="Ej. 4829 o REF-1092"
-                      value={cardReference}
+                      value={cardReference || ''}
                       onChange={(e) => setCardReference(e.target.value)}
                       className="w-full px-4 py-3 rounded-2xl border border-gray-300 focus:border-[#1F4461] text-base font-mono outline-none"
                     />

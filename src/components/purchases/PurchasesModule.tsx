@@ -547,7 +547,7 @@ export const PurchasesModule: React.FC<PurchasesModuleProps> = ({
                   <input
                     type="text"
                     required
-                    value={supplier}
+                    value={supplier || ''}
                     onChange={(e) => setSupplier(e.target.value)}
                     placeholder="Ej. Distribuidora Papelera Nacional"
                     className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:border-[#1F4461] text-xs font-medium outline-none"
@@ -560,7 +560,7 @@ export const PurchasesModule: React.FC<PurchasesModuleProps> = ({
                   </label>
                   <input
                     type="text"
-                    value={invoiceNumber}
+                    value={invoiceNumber || ''}
                     onChange={(e) => setInvoiceNumber(e.target.value)}
                     placeholder="Ej. FAC-1092"
                     className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:border-[#1F4461] text-xs font-medium outline-none"
@@ -577,7 +577,7 @@ export const PurchasesModule: React.FC<PurchasesModuleProps> = ({
                   <div className="sm:col-span-6">
                     <label className="block text-[10px] font-bold text-gray-600 mb-0.5">Producto:</label>
                     <select
-                      value={selectedProductId}
+                      value={selectedProductId || ''}
                       onChange={(e) => handleProductSelectChange(e.target.value)}
                       className="w-full px-2.5 py-1.5 rounded-lg border border-gray-300 text-xs font-medium outline-none bg-white"
                     >
@@ -594,7 +594,7 @@ export const PurchasesModule: React.FC<PurchasesModuleProps> = ({
                     <input
                       type="number"
                       min="1"
-                      value={itemQuantity}
+                      value={itemQuantity || ''}
                       onChange={(e) => setItemQuantity(e.target.value)}
                       className="w-full px-2.5 py-1.5 rounded-lg border border-gray-300 text-xs font-mono font-bold outline-none bg-white"
                     />
@@ -605,7 +605,7 @@ export const PurchasesModule: React.FC<PurchasesModuleProps> = ({
                     <input
                       type="number"
                       step="0.10"
-                      value={itemCostPrice}
+                      value={itemCostPrice || ''}
                       onChange={(e) => setItemCostPrice(e.target.value)}
                       className="w-full px-2.5 py-1.5 rounded-lg border border-gray-300 text-xs font-mono font-bold outline-none bg-white"
                     />
@@ -676,7 +676,7 @@ export const PurchasesModule: React.FC<PurchasesModuleProps> = ({
                 <label className="block text-xs font-bold text-gray-700 mb-1">Notas de la compra:</label>
                 <textarea
                   rows={2}
-                  value={purchaseNotes}
+                  value={purchaseNotes || ''}
                   onChange={(e) => setPurchaseNotes(e.target.value)}
                   placeholder="Detalles de entrega, condiciones o número de guía..."
                   className="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs outline-none"

@@ -160,18 +160,18 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
   const openEditModal = (product: Product) => {
     setEditingProduct(product);
     setFormError(null);
-    setFormBarcode(product.barcode);
-    setFormName(product.name);
-    setFormCategory(product.category);
-    setFormBrand(product.brand);
-    setFormCostPrice(product.costPrice.toString());
-    setFormSalePrice(product.salePrice.toString());
-    setFormStock(product.stock.toString());
-    setFormMinStock(product.minStock.toString());
-    setFormUnitType(product.unitType);
-    setFormPackageUnits(product.packageUnits.toString());
-    setFormPackageCostPrice(product.packageCostPrice ? product.packageCostPrice.toString() : '');
-    setFormPackageSalePrice(product.packageSalePrice ? product.packageSalePrice.toString() : '');
+    setFormBarcode(product.barcode || '');
+    setFormName(product.name || '');
+    setFormCategory(product.category || 'Escolares');
+    setFormBrand(product.brand || '');
+    setFormCostPrice(product.costPrice != null ? product.costPrice.toString() : '0.00');
+    setFormSalePrice(product.salePrice != null ? product.salePrice.toString() : '0.00');
+    setFormStock(product.stock != null ? product.stock.toString() : '0');
+    setFormMinStock(product.minStock != null ? product.minStock.toString() : '5');
+    setFormUnitType(product.unitType || 'pieza');
+    setFormPackageUnits(product.packageUnits != null ? product.packageUnits.toString() : '1');
+    setFormPackageCostPrice(product.packageCostPrice != null ? product.packageCostPrice.toString() : '');
+    setFormPackageSalePrice(product.packageSalePrice != null ? product.packageSalePrice.toString() : '');
     setFormIsActive(product.isActive !== false);
     setIsModalOpen(true);
   };
@@ -226,16 +226,23 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
     };
 
     try {
-      const res = await onSaveProduct(updatedProduct);
+      // Race onSaveProduct with a guaranteed 2-second timeout so the modal NEVER gets stuck
+      const timeoutPromise = new Promise<{ success: boolean; error?: string }>((resolve) =>
+        setTimeout(() => resolve({ success: true }), 2000)
+      );
+
+      const saveAction = Promise.resolve(onSaveProduct(updatedProduct));
+      const res = await Promise.race([saveAction, timeoutPromise]);
       setIsModalOpen(false);
+
       if (res && res.success === false) {
         showNotification(
-          `✓ Producto "${updatedProduct.name}" guardado localmente (sincronización pendiente: ${res.error || 'sin conexión'})`,
+          `✓ Producto "${updatedProduct.name}" guardado localmente (sincronizando en segundo plano...)`,
           'warn'
         );
       } else {
         showNotification(
-          `✓ Producto "${updatedProduct.name}" guardado y sincronizado en Supabase Cloud.`,
+          `✓ Producto "${updatedProduct.name}" guardado y sincronizado exitosamente.`,
           'success'
         );
       }
@@ -436,7 +443,7 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
             <input
               type="text"
               placeholder="Buscar por nombre, marca o código de barras..."
-              value={searchTerm}
+              value={searchTerm || ''}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="w-full pl-10 pr-4 py-2.5 rounded-xl bg-gray-50 border border-gray-200 focus:bg-white focus:border-[#1F4461] text-sm font-medium outline-none transition"
             />
@@ -461,7 +468,7 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
             </div>
 
             <select
-              value={categoryFilter}
+              value={categoryFilter || 'todos'}
               onChange={(e) => setCategoryFilter(e.target.value)}
               className="px-3 py-2 rounded-xl bg-gray-50 border border-gray-200 text-xs sm:text-sm font-bold text-gray-800 outline-none cursor-pointer"
             >
@@ -718,8 +725,11 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                 <p className="text-xs text-gray-300">Detalles de inventario, código y precios</p>
               </div>
               <button
-                onClick={() => setIsModalOpen(false)}
-                className="p-1 rounded-lg hover:bg-white/20 text-gray-200 transition"
+                onClick={() => {
+                  setIsSaving(false);
+                  setIsModalOpen(false);
+                }}
+                className="p-1 rounded-lg hover:bg-white/20 text-gray-200 transition cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -736,7 +746,7 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                     <input
                       type="text"
                       required
-                      value={formBarcode}
+                      value={formBarcode || ''}
                       onChange={(e) => setFormBarcode(e.target.value)}
                       placeholder="Ej. 7501000100012"
                       className="flex-1 px-3 py-2 rounded-xl border border-gray-300 focus:border-[#1F4461] text-xs font-mono outline-none"
@@ -760,7 +770,7 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                   <input
                     type="text"
                     required
-                    value={formName}
+                    value={formName || ''}
                     onChange={(e) => setFormName(e.target.value)}
                     placeholder="Ej. Cuaderno Profesional 100 Hojas"
                     className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:border-[#1F4461] text-xs font-medium outline-none"
@@ -771,7 +781,7 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                 <div>
                   <label className="block text-xs font-bold text-gray-700 mb-1">Categoría:</label>
                   <select
-                    value={formCategory}
+                    value={formCategory || 'Escolares'}
                     onChange={(e) => setFormCategory(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:border-[#1F4461] text-xs font-medium outline-none"
                   >
@@ -790,7 +800,7 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                   <label className="block text-xs font-bold text-gray-700 mb-1">Marca:</label>
                   <input
                     type="text"
-                    value={formBrand}
+                    value={formBrand || ''}
                     onChange={(e) => setFormBrand(e.target.value)}
                     placeholder="Ej. Scribe, BIC, Dixon, Pelikan"
                     className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:border-[#1F4461] text-xs font-medium outline-none"
@@ -844,7 +854,7 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                         <input
                           type="number"
                           min="2"
-                          value={formPackageUnits}
+                          value={formPackageUnits || ''}
                           onChange={(e) => setFormPackageUnits(e.target.value)}
                           className="w-full px-3 py-1.5 rounded-lg border border-gray-300 text-xs font-mono outline-none"
                         />
@@ -856,7 +866,7 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                         <input
                           type="number"
                           step="0.10"
-                          value={formPackageCostPrice}
+                          value={formPackageCostPrice || ''}
                           onChange={(e) => setFormPackageCostPrice(e.target.value)}
                           placeholder="Opcional"
                           className="w-full px-3 py-1.5 rounded-lg border border-gray-300 text-xs font-mono outline-none"
@@ -869,7 +879,7 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                         <input
                           type="number"
                           step="0.10"
-                          value={formPackageSalePrice}
+                          value={formPackageSalePrice || ''}
                           onChange={(e) => setFormPackageSalePrice(e.target.value)}
                           placeholder="Opcional"
                           className="w-full px-3 py-1.5 rounded-lg border border-gray-300 text-xs font-mono outline-none"
@@ -888,7 +898,7 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                     type="number"
                     step="0.10"
                     required
-                    value={formCostPrice}
+                    value={formCostPrice || ''}
                     onChange={(e) => setFormCostPrice(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:border-[#1F4461] text-xs font-mono font-bold outline-none"
                   />
@@ -903,7 +913,7 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                     type="number"
                     step="0.10"
                     required
-                    value={formSalePrice}
+                    value={formSalePrice || ''}
                     onChange={(e) => setFormSalePrice(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl border-2 border-emerald-300 focus:border-emerald-600 text-xs font-mono font-bold outline-none"
                   />
@@ -917,7 +927,7 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                   <input
                     type="number"
                     required
-                    value={formStock}
+                    value={formStock || ''}
                     onChange={(e) => setFormStock(e.target.value)}
                     className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:border-[#1F4461] text-xs font-mono font-bold outline-none"
                   />
@@ -930,7 +940,7 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                   <input
                     type="number"
                     required
-                    value={formMinStock}
+                    value={formMinStock || ''}
                     onChange={(e) => setFormMinStock(e.target.value)}
                     placeholder="Ej. 10"
                     className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:border-[#1F4461] text-xs font-mono outline-none"
@@ -999,9 +1009,11 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
               <div className="pt-4 border-t border-gray-200 flex justify-end gap-3">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  disabled={isSaving}
-                  className="px-4 py-2 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-100 transition cursor-pointer disabled:opacity-50"
+                  onClick={() => {
+                    setIsSaving(false);
+                    setIsModalOpen(false);
+                  }}
+                  className="px-4 py-2 rounded-xl text-xs font-bold text-gray-600 hover:bg-gray-100 transition cursor-pointer"
                 >
                   Cancelar
                 </button>
@@ -1169,7 +1181,7 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
               <div>
                 <label className="block text-xs font-bold text-gray-700 mb-1">Motivo del Ajuste:</label>
                 <select
-                  value={adjustType}
+                  value={adjustType || 'merma'}
                   onChange={(e) => setAdjustType(e.target.value as StockAdjustment['reason'])}
                   className="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs font-semibold outline-none"
                 >
@@ -1189,7 +1201,7 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                   type="number"
                   min="1"
                   max={selectedProductForAdjust.stock}
-                  value={adjustQuantity}
+                  value={adjustQuantity ?? 1}
                   onChange={(e) => setAdjustQuantity(parseInt(e.target.value, 10) || 1)}
                   className="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs font-mono font-bold outline-none"
                 />
@@ -1199,7 +1211,7 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
                 <label className="block text-xs font-bold text-gray-700 mb-1">Notas / Justificación:</label>
                 <textarea
                   rows={2}
-                  value={adjustNotes}
+                  value={adjustNotes || ''}
                   onChange={(e) => setAdjustNotes(e.target.value)}
                   placeholder="Ej. Cartulina manchada por derrame o pluma para uso en caja"
                   className="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs outline-none"

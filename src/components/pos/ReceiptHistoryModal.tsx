@@ -102,7 +102,7 @@ export const ReceiptHistoryModal: React.FC<ReceiptHistoryModalProps> = ({
               <input
                 type="text"
                 placeholder="Buscar por # de Folio, producto o cajero..."
-                value={searchTerm}
+                value={searchTerm || ''}
                 onChange={(e) => setSearchTerm(e.target.value)}
                 className="w-full pl-9 pr-3 py-2 text-xs sm:text-sm bg-white border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#1F4461] outline-hidden"
               />
@@ -288,7 +288,7 @@ export const ReceiptHistoryModal: React.FC<ReceiptHistoryModalProps> = ({
                   required
                   rows={2}
                   placeholder="Ej. Cliente cambió de opinión / Producto equivocado / Defecto"
-                  value={cancelReason}
+                  value={cancelReason || ''}
                   onChange={(e) => setCancelReason(e.target.value)}
                   className="w-full p-2.5 text-xs border border-gray-300 rounded-xl focus:ring-2 focus:ring-rose-500 outline-hidden"
                 />

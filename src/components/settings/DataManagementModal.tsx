@@ -286,7 +286,7 @@ END $$;`;
                 </label>
                 <input
                   type="text"
-                  value={supabaseConfig.url}
+                  value={supabaseConfig.url || ''}
                   onChange={(e) => setSupabaseConfig({ ...supabaseConfig, url: e.target.value.trim() })}
                   placeholder="https://xyzabcdefg.supabase.co"
                   className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:border-[#1F4461] text-xs font-mono outline-none"
@@ -299,7 +299,7 @@ END $$;`;
                 </label>
                 <input
                   type="password"
-                  value={supabaseConfig.anonKey}
+                  value={supabaseConfig.anonKey || ''}
                   onChange={(e) => setSupabaseConfig({ ...supabaseConfig, anonKey: e.target.value.trim() })}
                   placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
                   className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:border-[#1F4461] text-xs font-mono outline-none"

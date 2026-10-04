@@ -67,7 +67,7 @@ export const StoreSettingsModal: React.FC<StoreSettingsModalProps> = ({
               <input
                 type="text"
                 required
-                value={config.name}
+                value={config.name || ''}
                 onChange={(e) => setConfig({ ...config, name: e.target.value })}
                 className="w-full pl-9 pr-3 py-2 text-sm border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#1F4461] outline-hidden font-bold"
                 placeholder="Ej. Papelería El Escritorio"
@@ -82,7 +82,7 @@ export const StoreSettingsModal: React.FC<StoreSettingsModalProps> = ({
               </label>
               <input
                 type="text"
-                value={config.subtitle}
+                value={config.subtitle || ''}
                 onChange={(e) => setConfig({ ...config, subtitle: e.target.value })}
                 className="w-full px-3 py-2 text-xs border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#1F4461] outline-hidden"
                 placeholder="Ej. Artículos Escolares y Copias"
@@ -95,7 +95,7 @@ export const StoreSettingsModal: React.FC<StoreSettingsModalProps> = ({
               </label>
               <input
                 type="text"
-                value={config.rfc}
+                value={config.rfc || ''}
                 onChange={(e) => setConfig({ ...config, rfc: e.target.value.toUpperCase() })}
                 className="w-full px-3 py-2 text-xs border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#1F4461] outline-hidden font-mono uppercase"
                 placeholder="Ej. XAXX010101000"
@@ -112,7 +112,7 @@ export const StoreSettingsModal: React.FC<StoreSettingsModalProps> = ({
                 <Phone className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
                 <input
                   type="text"
-                  value={config.phone}
+                  value={config.phone || ''}
                   onChange={(e) => setConfig({ ...config, phone: e.target.value })}
                   className="w-full pl-9 pr-3 py-2 text-xs border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#1F4461] outline-hidden"
                   placeholder="Ej. (55) 1234-5678"
@@ -145,7 +145,7 @@ export const StoreSettingsModal: React.FC<StoreSettingsModalProps> = ({
               <MapPin className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
               <input
                 type="text"
-                value={config.address}
+                value={config.address || ''}
                 onChange={(e) => setConfig({ ...config, address: e.target.value })}
                 className="w-full pl-9 pr-3 py-2 text-xs border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#1F4461] outline-hidden"
                 placeholder="Ej. Av. Universidad 405, CDMX"
@@ -159,7 +159,7 @@ export const StoreSettingsModal: React.FC<StoreSettingsModalProps> = ({
             </label>
             <textarea
               rows={3}
-              value={config.ticketFooter}
+              value={config.ticketFooter || ''}
               onChange={(e) => setConfig({ ...config, ticketFooter: e.target.value })}
               className="w-full p-2.5 text-xs border border-gray-300 rounded-xl focus:ring-2 focus:ring-[#1F4461] outline-hidden"
               placeholder="Ej. ¡Gracias por su compra! Conserve este ticket para aclaraciones..."

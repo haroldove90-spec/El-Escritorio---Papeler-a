@@ -392,7 +392,7 @@ export const ProfileModule: React.FC<ProfileModuleProps> = ({
                 <input
                   type="url"
                   placeholder="https://ejemplo.com/mifoto.jpg"
-                  value={photoUrlInput}
+                  value={photoUrlInput || ''}
                   onChange={(e) => setPhotoUrlInput(e.target.value)}
                   className="flex-1 px-3 py-1.5 rounded-xl border border-gray-300 text-xs outline-none focus:border-[#1F4461]"
                 />
@@ -424,7 +424,7 @@ export const ProfileModule: React.FC<ProfileModuleProps> = ({
                 <input
                   type="text"
                   required
-                  value={fullName}
+                  value={fullName || ''}
                   onChange={(e) => setFullName(e.target.value)}
                   className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-[#1F4461] text-base font-medium outline-none"
                 />
@@ -437,7 +437,7 @@ export const ProfileModule: React.FC<ProfileModuleProps> = ({
                   <input
                     type="email"
                     required
-                    value={email}
+                    value={email || ''}
                     onChange={(e) => setEmail(e.target.value)}
                     className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 focus:border-[#1F4461] text-base font-medium outline-none"
                   />
@@ -450,7 +450,7 @@ export const ProfileModule: React.FC<ProfileModuleProps> = ({
                   <Phone className="w-4.5 h-4.5 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="tel"
-                    value={phone}
+                    value={phone || ''}
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="Ej. 55 1234 5678"
                     className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 focus:border-[#1F4461] text-base font-medium outline-none"
@@ -464,7 +464,7 @@ export const ProfileModule: React.FC<ProfileModuleProps> = ({
                   <CreditCard className="w-4.5 h-4.5 text-gray-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
-                    value={identification}
+                    value={identification || ''}
                     onChange={(e) => setIdentification(e.target.value)}
                     placeholder="Ej. CAJ-2026-01"
                     className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-300 focus:border-[#1F4461] text-base font-mono outline-none"
@@ -513,7 +513,7 @@ export const ProfileModule: React.FC<ProfileModuleProps> = ({
                 <input
                   type="text"
                   required
-                  value={username}
+                  value={username || ''}
                   onChange={(e) => setUsername(e.target.value)}
                   className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:border-[#1F4461] text-base font-mono font-bold outline-none"
                 />
@@ -525,7 +525,7 @@ export const ProfileModule: React.FC<ProfileModuleProps> = ({
                 <div className="relative">
                   <input
                     type={showPassword ? 'text' : 'password'}
-                    value={newPassword}
+                    value={newPassword || ''}
                     onChange={(e) => setNewPassword(e.target.value)}
                     placeholder="Dejar vacío para mantener la actual"
                     className="w-full pr-12 pl-4 py-3 rounded-xl border border-gray-300 focus:border-[#1F4461] text-base font-mono outline-none"
@@ -547,7 +547,7 @@ export const ProfileModule: React.FC<ProfileModuleProps> = ({
                 <div className="relative">
                   <input
                     type={showConfirmPassword ? 'text' : 'password'}
-                    value={confirmPassword}
+                    value={confirmPassword || ''}
                     onChange={(e) => setConfirmPassword(e.target.value)}
                     placeholder="Repite la nueva contraseña"
                     className="w-full pr-12 pl-4 py-3 rounded-xl border border-gray-300 focus:border-[#1F4461] text-base font-mono outline-none"

@@ -123,7 +123,7 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
                   required
                   autoFocus
                   autoComplete="username"
-                  value={username}
+                  value={username || ''}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder="Ej: Admin1 o haroldo90 o cajero1"
                   className="w-full pl-10 pr-4 py-2.5 sm:py-3 rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:border-[#1F4461] text-sm sm:text-base font-semibold text-gray-900 outline-none transition shadow-2xs"
@@ -142,7 +142,7 @@ export const RoleSelector: React.FC<RoleSelectorProps> = ({
                   type={showPassword ? 'text' : 'password'}
                   required
                   autoComplete="current-password"
-                  value={password}
+                  value={password || ''}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder="••••••••••••"
                   className="w-full pl-10 pr-11 py-2.5 sm:py-3 rounded-xl border border-gray-200 bg-gray-50/50 focus:bg-white focus:border-[#1F4461] text-sm sm:text-base font-mono text-gray-900 outline-none transition shadow-2xs"

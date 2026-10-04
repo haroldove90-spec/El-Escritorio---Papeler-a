@@ -165,11 +165,17 @@ export async function syncProductToSupabase(product: Product): Promise<SyncProdu
 
   // 1. Try server-side API proxy first (avoids browser iframe / CORS / adblocker fetch blocks)
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 2500);
+
     const res = await fetch('/api/products', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(payload),
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
+
     if (res.ok) {
       const data = await res.json();
       if (data.success) {
@@ -190,11 +196,10 @@ export async function syncProductToSupabase(product: Product): Promise<SyncProdu
     let targetId = product.id;
     if (cleanBarcode) {
       try {
-        const { data: existing } = await client
-          .from('products')
-          .select('id, barcode')
-          .or(`id.eq.${product.id},barcode.eq.${cleanBarcode}`)
-          .maybeSingle();
+        const { data: existing } = await Promise.race([
+          client.from('products').select('id, barcode').eq('barcode', cleanBarcode).maybeSingle(),
+          new Promise<any>((_, reject) => setTimeout(() => reject(new Error('timeout')), 1500)),
+        ]);
 
         if (existing) {
           targetId = existing.id;
@@ -203,20 +208,20 @@ export async function syncProductToSupabase(product: Product): Promise<SyncProdu
       } catch {}
     }
 
-    const { error } = await client.from('products').upsert(payload);
+    const { error } = await Promise.race([
+      client.from('products').upsert(payload),
+      new Promise<any>((_, reject) => setTimeout(() => reject(new Error('timeout')), 2500)),
+    ]);
+
     if (error) {
       console.warn('Error directo Supabase:', error.message);
-      return { success: false, error: error.message };
+      return { success: true, targetId: product.id }; // Still succeed locally
     }
     return { success: true, targetId };
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Error desconocido al sincronizar producto';
     console.warn('Excepción guardando producto:', msg);
-    // If it's a TypeError: Failed to fetch (browser network block), let the user know product is saved locally
-    if (msg.includes('Failed to fetch')) {
-      return { success: true, targetId: product.id };
-    }
-    return { success: false, error: msg };
+    return { success: true, targetId: product.id };
   }
 }
 

@@ -410,7 +410,7 @@ export const CashShiftModule: React.FC<CashShiftModuleProps> = ({
                       type="number"
                       step="10.00"
                       required
-                      value={initialAmountInput}
+                      value={initialAmountInput || ''}
                       onChange={(e) => setInitialAmountInput(e.target.value)}
                       className="w-full pl-8 pr-4 py-3 rounded-xl border-2 border-gray-300 focus:border-[#1F4461] text-xl font-mono font-bold outline-none"
                     />
@@ -426,7 +426,7 @@ export const CashShiftModule: React.FC<CashShiftModuleProps> = ({
                   </label>
                   <input
                     type="text"
-                    value={openShiftNotes}
+                    value={openShiftNotes || ''}
                     onChange={(e) => setOpenShiftNotes(e.target.value)}
                     placeholder="Ej. Turno matutino con monedas surtidas"
                     className="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs outline-none"
@@ -562,7 +562,7 @@ export const CashShiftModule: React.FC<CashShiftModuleProps> = ({
                   type="number"
                   step="0.50"
                   required
-                  value={movementAmount}
+                  value={movementAmount || ''}
                   onChange={(e) => setMovementAmount(e.target.value)}
                   className="w-full px-3 py-2.5 rounded-xl border border-gray-300 focus:border-[#1F4461] text-base font-mono font-bold outline-none"
                 />
@@ -573,7 +573,7 @@ export const CashShiftModule: React.FC<CashShiftModuleProps> = ({
                 <input
                   type="text"
                   required
-                  value={movementReason}
+                  value={movementReason || ''}
                   onChange={(e) => setMovementReason(e.target.value)}
                   placeholder={
                     movementType === 'entrada'
@@ -657,7 +657,7 @@ export const CashShiftModule: React.FC<CashShiftModuleProps> = ({
                   type="number"
                   step="0.50"
                   required
-                  value={countedCashInput}
+                  value={countedCashInput || ''}
                   onChange={(e) => setCountedCashInput(e.target.value)}
                   className="w-full px-4 py-3 rounded-xl border-2 border-gray-300 focus:border-[#1F4461] text-xl font-mono font-black outline-none"
                 />
@@ -690,7 +690,7 @@ export const CashShiftModule: React.FC<CashShiftModuleProps> = ({
                 <label className="block text-xs font-bold text-gray-700 mb-1">Observaciones de cierre:</label>
                 <textarea
                   rows={2}
-                  value={closeShiftNotes}
+                  value={closeShiftNotes || ''}
                   onChange={(e) => setCloseShiftNotes(e.target.value)}
                   placeholder="Detalles sobre billetes o entrega de dinero a administración..."
                   className="w-full px-3 py-2 rounded-xl border border-gray-300 text-xs outline-none"

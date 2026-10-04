@@ -47,18 +47,18 @@ app.post('/api/products', async (req, res) => {
     const payload = req.body;
     const cleanBarcode = (payload.barcode || '').trim();
 
-    // Check if barcode or ID already exists in Supabase to resolve ID conflicts
+    // Check if barcode already exists in Supabase to resolve ID conflicts
     let targetId = payload.id;
     if (cleanBarcode) {
-      const { data: existing } = await supabase
-        .from('products')
-        .select('id, barcode')
-        .or(`id.eq.${payload.id},barcode.eq.${cleanBarcode}`)
-        .maybeSingle();
-
-      if (existing) {
-        targetId = existing.id;
-      }
+      try {
+        const { data: existing } = await Promise.race([
+          supabase.from('products').select('id, barcode').eq('barcode', cleanBarcode).maybeSingle(),
+          new Promise<any>((_, reject) => setTimeout(() => reject(new Error('timeout')), 2000)),
+        ]);
+        if (existing) {
+          targetId = existing.id;
+        }
+      } catch {}
     }
 
     const itemToUpsert = {
@@ -88,9 +88,13 @@ app.post('/api/products', async (req, res) => {
       last_restock_date: payload.last_restock_date || payload.lastRestockDate || new Date().toISOString(),
     };
 
-    const { data, error } = await supabase.from('products').upsert(itemToUpsert).select();
+    const { error } = await Promise.race([
+      supabase.from('products').upsert(itemToUpsert),
+      new Promise<any>((_, reject) => setTimeout(() => reject(new Error('Supabase request timeout')), 3500)),
+    ]);
+
     if (error) throw error;
-    res.json({ success: true, targetId, data });
+    res.json({ success: true, targetId });
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : 'Error al guardar producto';
     console.error('API /api/products error:', msg);
