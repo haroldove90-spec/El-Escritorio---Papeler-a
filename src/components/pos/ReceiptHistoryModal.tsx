@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Sale, Product } from '../../types';
 import {
   Receipt,
@@ -41,20 +41,24 @@ export const ReceiptHistoryModal: React.FC<ReceiptHistoryModalProps> = ({
 
   if (!isOpen) return null;
 
-  // Filter sales
-  const filteredSales = sales.filter((s) => {
-    const term = searchTerm.toLowerCase().trim();
-    const matchesSearch =
-      !term ||
-      (s.folio ? s.folio.toString().includes(term) : false) ||
-      (s.cashierName ? s.cashierName.toLowerCase().includes(term) : false) ||
-      (s.items && s.items.some((it) => (it.name || '').toLowerCase().includes(term)));
+  // Filter sales (newest sales always first)
+  const filteredSales = useMemo(() => {
+    return sales
+      .filter((s) => {
+        const term = searchTerm.toLowerCase().trim();
+        const matchesSearch =
+          !term ||
+          (s.folio ? s.folio.toString().includes(term) : false) ||
+          (s.cashierName ? s.cashierName.toLowerCase().includes(term) : false) ||
+          (s.items && s.items.some((it) => (it.name || '').toLowerCase().includes(term)));
 
-    const matchesMethod =
-      filterMethod === 'todos' || s.paymentMethod === filterMethod;
+        const matchesMethod =
+          filterMethod === 'todos' || s.paymentMethod === filterMethod;
 
-    return matchesSearch && matchesMethod;
-  });
+        return matchesSearch && matchesMethod;
+      })
+      .sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
+  }, [sales, searchTerm, filterMethod]);
 
   const handleConfirmCancel = (e: React.FormEvent) => {
     e.preventDefault();

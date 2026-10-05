@@ -282,6 +282,13 @@ export default function App() {
               merged.push(rp);
             }
           });
+          // Sort newest products first
+          merged.sort((a, b) => {
+            const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            if (timeB !== timeA) return timeB - timeA;
+            return b.id.localeCompare(a.id);
+          });
           saveProducts(merged);
           return merged;
         });
@@ -616,9 +623,15 @@ export default function App() {
     );
     let updated: Product[];
     if (existingIndex > -1) {
-      updated = [...products];
-      updated[existingIndex] = product;
+      // Put updated product at the very top (index 0) so the most recently modified item is always first
+      const otherProducts = products.filter((_, idx) => idx !== existingIndex);
+      const refreshedProduct = {
+        ...product,
+        lastRestockDate: new Date().toISOString(),
+      };
+      updated = [refreshedProduct, ...otherProducts];
     } else {
+      // New product goes directly to top
       updated = [product, ...products];
     }
     setProducts(updated);

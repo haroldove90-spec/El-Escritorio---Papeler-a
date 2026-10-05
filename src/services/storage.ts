@@ -293,6 +293,13 @@ export function getProducts(): Product[] {
             });
           }
         }
+        // Always return products sorted by newest first
+        uniqueProducts.sort((a, b) => {
+          const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+          const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+          if (timeB !== timeA) return timeB - timeA;
+          return b.id.localeCompare(a.id);
+        });
         return uniqueProducts;
       }
     }
@@ -301,7 +308,12 @@ export function getProducts(): Product[] {
   }
 
   // Load default sample products with isActive: true so catalog is never empty
-  const initial = SAMPLE_PRODUCTS.map((p) => ({ ...p, isActive: true }));
+  const initial = SAMPLE_PRODUCTS.map((p) => ({ ...p, isActive: true })).sort((a, b) => {
+    const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    if (timeB !== timeA) return timeB - timeA;
+    return b.id.localeCompare(a.id);
+  });
   saveProducts(initial);
   return initial;
 }
@@ -342,7 +354,10 @@ export function getSales(): Sale[] {
   try {
     const raw = localStorage.getItem(KEYS.SALES);
     if (raw) {
-      return JSON.parse(raw);
+      const parsed: Sale[] = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
+      }
     }
   } catch (e) {
     console.error('Error parsing sales', e);
@@ -352,8 +367,9 @@ export function getSales(): Sale[] {
     return [];
   }
 
-  saveSales(SAMPLE_SALES);
-  return SAMPLE_SALES;
+  const initial = [...SAMPLE_SALES].sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
+  saveSales(initial);
+  return initial;
 }
 
 export function saveSales(sales: Sale[]): void {
@@ -366,7 +382,10 @@ export function getCashShifts(): CashShift[] {
   try {
     const raw = localStorage.getItem(KEYS.SHIFTS);
     if (raw) {
-      return JSON.parse(raw);
+      const parsed: CashShift[] = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed.sort((a, b) => new Date(b.openedAt || 0).getTime() - new Date(a.openedAt || 0).getTime());
+      }
     }
   } catch (e) {
     console.error('Error parsing shifts', e);
@@ -396,7 +415,14 @@ export function getPurchases(): Purchase[] {
   try {
     const raw = localStorage.getItem(KEYS.PURCHASES);
     if (raw) {
-      return JSON.parse(raw);
+      const parsed: Purchase[] = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed.sort(
+          (a, b) =>
+            new Date(b.date || b.createdAt || 0).getTime() -
+            new Date(a.date || a.createdAt || 0).getTime()
+        );
+      }
     }
   } catch (e) {
     console.error('Error parsing purchases', e);
@@ -406,8 +432,13 @@ export function getPurchases(): Purchase[] {
     return [];
   }
 
-  savePurchases(SAMPLE_PURCHASES);
-  return SAMPLE_PURCHASES;
+  const initial = [...SAMPLE_PURCHASES].sort(
+    (a, b) =>
+      new Date(b.date || b.createdAt || 0).getTime() -
+      new Date(a.date || a.createdAt || 0).getTime()
+  );
+  savePurchases(initial);
+  return initial;
 }
 
 export function savePurchases(purchases: Purchase[]): void {
@@ -420,7 +451,10 @@ export function getAdjustments(): StockAdjustment[] {
   try {
     const raw = localStorage.getItem(KEYS.ADJUSTMENTS);
     if (raw) {
-      return JSON.parse(raw);
+      const parsed: StockAdjustment[] = JSON.parse(raw);
+      if (Array.isArray(parsed)) {
+        return parsed.sort((a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime());
+      }
     }
   } catch (e) {
     console.error('Error parsing adjustments', e);

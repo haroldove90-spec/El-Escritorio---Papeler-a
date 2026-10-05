@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import {
   Product,
   ServiceItem,
@@ -396,19 +396,28 @@ export const PosModule: React.FC<PosModuleProps> = ({
     setCart([]);
   };
 
-  // Filtered Products for Catalog Search (only active products)
-  const filteredProducts = products.filter((prod) => {
-    if (prod.isActive === false) return false;
-    const matchesCategory = selectedCategory === 'todos' || prod.category === selectedCategory;
-    const term = searchTerm.toLowerCase().trim();
-    if (!term) return matchesCategory;
+  // Filtered Products for Catalog Search (only active products, newest first)
+  const filteredProducts = useMemo(() => {
+    return products
+      .filter((prod) => {
+        if (prod.isActive === false) return false;
+        const matchesCategory = selectedCategory === 'todos' || prod.category === selectedCategory;
+        const term = searchTerm.toLowerCase().trim();
+        if (!term) return matchesCategory;
 
-    const nameMatch = (prod.name || '').toLowerCase().includes(term);
-    const barcodeMatch = (prod.barcode || '').toLowerCase().includes(term);
-    const brandMatch = (prod.brand || '').toLowerCase().includes(term);
+        const nameMatch = (prod.name || '').toLowerCase().includes(term);
+        const barcodeMatch = (prod.barcode || '').toLowerCase().includes(term);
+        const brandMatch = (prod.brand || '').toLowerCase().includes(term);
 
-    return matchesCategory && (nameMatch || barcodeMatch || brandMatch);
-  });
+        return matchesCategory && (nameMatch || barcodeMatch || brandMatch);
+      })
+      .sort((a, b) => {
+        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        if (timeB !== timeA) return timeB - timeA;
+        return b.id.localeCompare(a.id);
+      });
+  }, [products, selectedCategory, searchTerm]);
 
   const activeServices = services.filter((s) => s.isActive !== false);
 

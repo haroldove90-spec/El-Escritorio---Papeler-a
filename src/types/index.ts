@@ -155,6 +155,7 @@ export interface Purchase {
   supplier: string;
   invoiceNumber?: string;
   date: string;
+  createdAt?: string;
   items: PurchaseItem[];
   total: number;
   notes?: string;

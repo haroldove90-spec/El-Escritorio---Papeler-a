@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Product, Purchase, PurchaseItem, StockAdjustment } from '../../types';
 import {
   Truck,
@@ -144,15 +144,30 @@ export const PurchasesModule: React.FC<PurchasesModuleProps> = ({
 
   const totalPurchase = purchaseItems.reduce((acc, it) => acc + it.subtotal, 0);
 
+  // Always sort purchases and adjustments newest first
+  const sortedPurchases = useMemo(() => {
+    return [...purchases].sort(
+      (a, b) =>
+        new Date(b.date || b.createdAt || 0).getTime() -
+        new Date(a.date || a.createdAt || 0).getTime()
+    );
+  }, [purchases]);
+
+  const sortedAdjustments = useMemo(() => {
+    return [...adjustments].sort(
+      (a, b) => new Date(b.date || 0).getTime() - new Date(a.date || 0).getTime()
+    );
+  }, [adjustments]);
+
   // Multi-selection handlers for purchases
   const allPurchasesSelected =
-    purchases.length > 0 && purchases.every((p) => selectedPurchaseIds.includes(p.id));
+    sortedPurchases.length > 0 && sortedPurchases.every((p) => selectedPurchaseIds.includes(p.id));
 
   const handleToggleSelectAllPurchases = () => {
     if (allPurchasesSelected) {
       setSelectedPurchaseIds([]);
     } else {
-      setSelectedPurchaseIds(purchases.map((p) => p.id));
+      setSelectedPurchaseIds(sortedPurchases.map((p) => p.id));
     }
   };
 
@@ -365,7 +380,7 @@ export const PurchasesModule: React.FC<PurchasesModuleProps> = ({
               </div>
             )}
 
-            {purchases.length === 0 ? (
+            {sortedPurchases.length === 0 ? (
               <div className="text-center py-16 bg-white rounded-2xl border border-dashed border-gray-300">
                 <Truck className="w-12 h-12 text-gray-300 mx-auto mb-2" />
                 <p className="text-sm font-bold text-gray-700">No hay compras registradas aún</p>
@@ -374,7 +389,7 @@ export const PurchasesModule: React.FC<PurchasesModuleProps> = ({
                 </p>
               </div>
             ) : (
-              purchases.map((pur) => {
+              sortedPurchases.map((pur) => {
                 const isSelected = selectedPurchaseIds.includes(pur.id);
                 return (
                   <div
@@ -479,14 +494,14 @@ export const PurchasesModule: React.FC<PurchasesModuleProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {adjustments.length === 0 ? (
+                  {sortedAdjustments.length === 0 ? (
                     <tr>
                       <td colSpan={6} className="py-12 text-center text-gray-400">
                         No hay registros de mermas o ajustes manuales todavía.
                       </td>
                     </tr>
                   ) : (
-                    adjustments.map((adj) => (
+                    sortedAdjustments.map((adj) => (
                       <tr key={adj.id} className="hover:bg-gray-50/80 transition">
                         <td className="py-3 px-4 font-mono text-gray-500">
                           {new Date(adj.date).toLocaleDateString('es-MX', {

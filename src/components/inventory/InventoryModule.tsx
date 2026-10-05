@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Product, StockAdjustment } from '../../types';
 import {
   Plus,
@@ -289,23 +289,32 @@ export const InventoryModule: React.FC<InventoryModuleProps> = ({
     setIsAdjustModalOpen(false);
   };
 
-  // Filter products
+  // Filter & sort products (newest products always first)
   const cleanSearchTerm = searchTerm.toLowerCase().trim();
-  const filteredProducts = products.filter((prod) => {
-    const nameMatch = (prod.name || '').toLowerCase().includes(cleanSearchTerm);
-    const barcodeMatch = (prod.barcode || '').toLowerCase().includes(cleanSearchTerm);
-    const brandMatch = (prod.brand || '').toLowerCase().includes(cleanSearchTerm);
-    const matchesSearch = !cleanSearchTerm || nameMatch || barcodeMatch || brandMatch;
+  const filteredProducts = useMemo(() => {
+    return products
+      .filter((prod) => {
+        const nameMatch = (prod.name || '').toLowerCase().includes(cleanSearchTerm);
+        const barcodeMatch = (prod.barcode || '').toLowerCase().includes(cleanSearchTerm);
+        const brandMatch = (prod.brand || '').toLowerCase().includes(cleanSearchTerm);
+        const matchesSearch = !cleanSearchTerm || nameMatch || barcodeMatch || brandMatch;
 
-    const matchesCategory = categoryFilter === 'todos' || prod.category === categoryFilter;
-    const matchesStock = stockFilter === 'todos' || (stockFilter === 'bajo' && prod.stock <= prod.minStock);
-    const matchesStatus =
-      statusFilter === 'todos' ||
-      (statusFilter === 'activos' && prod.isActive !== false) ||
-      (statusFilter === 'inactivos' && prod.isActive === false);
+        const matchesCategory = categoryFilter === 'todos' || prod.category === categoryFilter;
+        const matchesStock = stockFilter === 'todos' || (stockFilter === 'bajo' && prod.stock <= prod.minStock);
+        const matchesStatus =
+          statusFilter === 'todos' ||
+          (statusFilter === 'activos' && prod.isActive !== false) ||
+          (statusFilter === 'inactivos' && prod.isActive === false);
 
-    return matchesSearch && matchesCategory && matchesStock && matchesStatus;
-  });
+        return matchesSearch && matchesCategory && matchesStock && matchesStatus;
+      })
+      .sort((a, b) => {
+        const timeA = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+        const timeB = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+        if (timeB !== timeA) return timeB - timeA;
+        return b.id.localeCompare(a.id);
+      });
+  }, [products, cleanSearchTerm, categoryFilter, stockFilter, statusFilter]);
 
   const lowStockProductsCount = products.filter((p) => p.stock <= p.minStock).length;
 

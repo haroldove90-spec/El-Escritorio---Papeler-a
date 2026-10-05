@@ -41,14 +41,16 @@ export const ReportsModule: React.FC<ReportsModuleProps> = ({
   const startOfWeek = startOfDay - now.getDay() * 24 * 3600 * 1000;
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
 
-  const filteredSales = sales.filter((s) => {
-    if (s.status === 'cancelada') return false;
-    const saleTime = new Date(s.date).getTime();
-    if (period === 'hoy') return saleTime >= startOfDay;
-    if (period === 'semana') return saleTime >= startOfWeek;
-    if (period === 'mes') return saleTime >= startOfMonth;
-    return true; // todos
-  });
+  const filteredSales = sales
+    .filter((s) => {
+      if (s.status === 'cancelada') return false;
+      const saleTime = new Date(s.date).getTime();
+      if (period === 'hoy') return saleTime >= startOfDay;
+      if (period === 'semana') return saleTime >= startOfWeek;
+      if (period === 'mes') return saleTime >= startOfMonth;
+      return true; // todos
+    })
+    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
   // Calculate Aggregates
   const totalRevenue = filteredSales.reduce((acc, s) => acc + s.total, 0);

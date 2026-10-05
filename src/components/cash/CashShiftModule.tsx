@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { CashShift, CashMovement, Sale } from '../../types';
 import {
   Coins,
@@ -85,6 +85,20 @@ export const CashShiftModule: React.FC<CashShiftModuleProps> = ({
   const initialAmount = activeShift ? activeShift.initialAmount : 0;
   const liveExpectedCash = initialAmount + liveCashSales + liveCashIn - liveCashOut;
   const liveTotalSales = liveCashSales + liveCardSales;
+
+  // Always sort shift history and active movements newest first
+  const sortedShiftHistory = useMemo(() => {
+    return [...shiftHistory].sort(
+      (a, b) => new Date(b.openedAt || 0).getTime() - new Date(a.openedAt || 0).getTime()
+    );
+  }, [shiftHistory]);
+
+  const sortedMovements = useMemo(() => {
+    if (!activeShift?.movements) return [];
+    return [...activeShift.movements].sort(
+      (a, b) => new Date(b.timestamp || 0).getTime() - new Date(a.timestamp || 0).getTime()
+    );
+  }, [activeShift?.movements]);
 
   // Handle Opening Cash Drawer
   const handleOpenShiftSubmit = (e: React.FormEvent) => {
@@ -343,14 +357,14 @@ export const CashShiftModule: React.FC<CashShiftModuleProps> = ({
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
-                      {activeShift.movements.length === 0 ? (
+                      {sortedMovements.length === 0 ? (
                         <tr>
                           <td colSpan={5} className="py-8 text-center text-gray-400">
                             No se han registrado entradas ni retiros manuales en este turno.
                           </td>
                         </tr>
                       ) : (
-                        activeShift.movements.map((mov) => (
+                        sortedMovements.map((mov) => (
                           <tr key={mov.id} className="hover:bg-gray-50 transition">
                             <td className="py-2.5 px-4 font-mono text-gray-500">
                               {new Date(mov.timestamp).toLocaleTimeString('es-MX', {
@@ -461,14 +475,14 @@ export const CashShiftModule: React.FC<CashShiftModuleProps> = ({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-100">
-                  {shiftHistory.length === 0 ? (
+                  {sortedShiftHistory.length === 0 ? (
                     <tr>
                       <td colSpan={9} className="py-12 text-center text-gray-400">
                         No hay historial de turnos cerrados todavía.
                       </td>
                     </tr>
                   ) : (
-                    shiftHistory.map((shift) => (
+                    sortedShiftHistory.map((shift) => (
                       <tr key={shift.id} className="hover:bg-gray-50/80 transition">
                         <td className="py-3 px-4">
                           <p className="font-bold text-gray-800">

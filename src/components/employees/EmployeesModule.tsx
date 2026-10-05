@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { UserAccount } from '../../types';
 import {
   Users,
@@ -60,17 +60,21 @@ export const EmployeesModule: React.FC<EmployeesModuleProps> = ({
   const [shareModalUser, setShareModalUser] = useState<UserAccount | null>(null);
   const [copiedNotice, setCopiedNotice] = useState(false);
 
-  // Filtered employees
+  // Filtered employees (newest first)
   const cleanSearch = searchTerm.toLowerCase().trim();
-  const filteredUsers = users.filter((u) => {
-    const nameMatch = (u.fullName || '').toLowerCase().includes(cleanSearch);
-    const userMatch = (u.username || '').toLowerCase().includes(cleanSearch);
-    const emailMatch = (u.email || '').toLowerCase().includes(cleanSearch);
-    const matchesSearch = !cleanSearch || nameMatch || userMatch || emailMatch;
+  const filteredUsers = useMemo(() => {
+    return users
+      .filter((u) => {
+        const nameMatch = (u.fullName || '').toLowerCase().includes(cleanSearch);
+        const userMatch = (u.username || '').toLowerCase().includes(cleanSearch);
+        const emailMatch = (u.email || '').toLowerCase().includes(cleanSearch);
+        const matchesSearch = !cleanSearch || nameMatch || userMatch || emailMatch;
 
-    const matchesRole = roleFilter === 'todos' || u.role === roleFilter;
-    return matchesSearch && matchesRole;
-  });
+        const matchesRole = roleFilter === 'todos' || u.role === roleFilter;
+        return matchesSearch && matchesRole;
+      })
+      .sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
+  }, [users, cleanSearch, roleFilter]);
 
   const openCreateModal = () => {
     setEditingUser(null);
