@@ -65,10 +65,11 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
       <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="bg-[#1F4461] text-white p-4 flex items-center justify-between">
+        <div className="bg-[#FA2400] text-white p-4 flex items-center justify-between relative overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-1 rainbow-gradient" />
           <div className="flex items-center gap-2">
-            <FileSpreadsheet className="w-5 h-5 text-[#9CC55B]" />
-            <h3 className="font-bold text-base">
+            <FileSpreadsheet className="w-5 h-5 text-[#FFF300]" />
+            <h3 className="font-black text-base">
               {generatedQuotation ? `Cotización #${generatedQuotation.folio}` : 'Generar Cotización / Presupuesto'}
             </h3>
           </div>
@@ -265,7 +266,7 @@ export const QuotationModal: React.FC<QuotationModalProps> = ({
                 <button
                   type="button"
                   onClick={handlePrint}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-[#1F4461] hover:bg-[#163248] text-white font-bold text-xs shadow-md transition cursor-pointer"
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-[#FA2400] hover:bg-[#d81f00] text-white font-black text-xs shadow-md transition cursor-pointer"
                 >
                   <Printer className="w-4 h-4" />
                   <span>Imprimir Cotización</span>

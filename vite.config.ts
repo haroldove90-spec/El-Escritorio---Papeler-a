@@ -15,23 +15,23 @@ export default defineConfig(() => {
         includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
         manifest: {
           id: '/',
-          name: 'El Escritorio',
-          short_name: 'Escritorio',
-          description: 'Sistema Punto de Venta (POS) e Inventario para Papelería El Escritorio',
-          theme_color: '#1F4461',
+          name: 'Papelería Arcoíris',
+          short_name: 'Arcoíris POS',
+          description: 'Sistema Punto de Venta (POS) e Inventario para Papelería Arcoíris',
+          theme_color: '#FA2400',
           background_color: '#ffffff',
           display: 'standalone',
           start_url: '/',
           scope: '/',
           icons: [
             {
-              src: 'https://appdesignproyectos.com/papeleriaicono.png',
+              src: 'https://lgaocnmbdzakianuvzlf.supabase.co/storage/v1/object/public/logos/ibetziicono.png',
               sizes: '192x192',
               type: 'image/png',
               purpose: 'any',
             },
             {
-              src: 'https://appdesignproyectos.com/papeleriaicono.png',
+              src: 'https://lgaocnmbdzakianuvzlf.supabase.co/storage/v1/object/public/logos/ibetziicono.png',
               sizes: '512x512',
               type: 'image/png',
               purpose: 'any',
@@ -52,11 +52,9 @@ export default defineConfig(() => {
       },
     },
     server: {
-      // HMR is disabled in AI Studio via DISABLE_HMR env var.
-      // Do not modify—file watching is disabled to prevent flickering during agent edits.
-      hmr: process.env.DISABLE_HMR !== 'true',
-      // Disable file watching when DISABLE_HMR is true to save CPU during agent edits.
-      watch: process.env.DISABLE_HMR === 'true' ? null : {},
+      // Disable client HMR websocket handshake in proxy container
+      hmr: false,
+      watch: null,
     },
   };
 });

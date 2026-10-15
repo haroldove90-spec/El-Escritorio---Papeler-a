@@ -23,6 +23,7 @@ export interface ServiceItem {
   id: string;
   name: string;
   price: number;
+  costPrice?: number;
   category: string;
   unit: string;
   iconName: string;
@@ -57,6 +58,8 @@ export interface CartItem {
   packageMode: 'pieza' | 'paquete';
   subtotal: number;
   brand?: string;
+  unitType?: string;
+  isPackage?: boolean;
 }
 
 export interface Sale {
@@ -92,10 +95,13 @@ export interface StoreConfig {
 
 export interface HeldSale {
   id: string;
-  label: string;
-  timestamp: string;
+  label?: string;
+  customerName?: string;
+  timestamp?: string;
+  createdAt?: string;
   items: CartItem[];
   notes?: string;
+  total?: number;
 }
 
 export interface Quotation {

@@ -34,7 +34,7 @@ export const ThermalTicket: React.FC<ThermalTicketProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
       <div className="bg-white rounded-2xl shadow-2xl max-w-md w-full overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header toolbar */}
-        <div className={`p-4 flex items-center justify-between text-white ${isCanceled ? 'bg-rose-700' : 'bg-[#1F4461]'}`}>
+        <div className={`p-4 flex items-center justify-between text-white ${isCanceled ? 'bg-rose-700' : 'bg-[#FA2400]'}`}>
           <div className="flex items-center gap-2">
             {isCanceled ? (
               <>
@@ -43,7 +43,7 @@ export const ThermalTicket: React.FC<ThermalTicketProps> = ({
               </>
             ) : (
               <>
-                <CheckCircle2 className="w-5 h-5 text-[#9CC55B]" />
+                <CheckCircle2 className="w-5 h-5 text-[#00D700]" />
                 <h3 className="font-bold text-sm">Comprobante de Venta #{sale.folio}</h3>
               </>
             )}
@@ -187,14 +187,14 @@ export const ThermalTicket: React.FC<ThermalTicketProps> = ({
         <div className="p-4 bg-white border-t border-gray-200 flex items-center gap-3">
           <button
             onClick={handlePrint}
-            className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-[#1F4461] hover:bg-[#163248] text-white font-bold text-sm shadow-md transition cursor-pointer active:scale-98"
+            className="flex-1 flex items-center justify-center gap-2 py-3 rounded-xl bg-[#FA2400] hover:bg-[#d81f00] text-white font-black text-sm shadow-md transition cursor-pointer active:scale-98"
           >
             <Printer className="w-4 h-4" />
             <span>Imprimir Ticket</span>
           </button>
           <button
             onClick={onNewSale}
-            className="flex-1 py-3 rounded-xl bg-[#9CC55B] hover:bg-[#8bb44c] text-[#1F4461] font-bold text-sm shadow-md transition cursor-pointer active:scale-98"
+            className="flex-1 py-3 rounded-xl bg-[#00D700] hover:bg-[#00be00] text-gray-950 font-black text-sm shadow-md transition cursor-pointer active:scale-98"
           >
             Continuar (F9)
           </button>

@@ -110,16 +110,16 @@ export const Sidebar: React.FC<SidebarProps> = ({
               key={item.id}
               onClick={() => onSelectModule(item.id)}
               title={isCollapsed ? item.label : undefined}
-              className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-xl text-sm transition-all cursor-pointer relative ${
+              className={`w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl text-sm transition-all cursor-pointer relative ${
                 isActive
-                  ? 'bg-[#1F4461] text-white shadow-xs font-bold'
-                  : 'text-gray-700 hover:bg-gray-100 hover:text-[#1F4461] font-semibold'
+                  ? 'bg-[#FA2400] text-white shadow-md font-black'
+                  : 'text-gray-700 hover:bg-red-50/50 hover:text-[#FA2400] font-bold'
               } ${isCollapsed ? 'justify-center px-2' : 'justify-between'}`}
             >
               <div className="flex items-center gap-2.5 min-w-0">
                 <Icon
                   className={`w-4.5 h-4.5 shrink-0 ${
-                    isActive ? 'text-[#9CC55B]' : 'text-gray-500'
+                    isActive ? 'text-[#FFF300]' : 'text-gray-500'
                   }`}
                 />
                 {!isCollapsed && <span className="truncate">{item.label}</span>}
@@ -130,7 +130,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   {item.badge !== undefined && (
                     <span
                       title="Productos con stock bajo"
-                      className="px-1.5 py-0.2 rounded-full text-[11px] font-bold bg-amber-500 text-white animate-pulse"
+                      className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-[#FFB100] text-gray-950 animate-pulse"
                     >
                       {item.badge}
                     </span>
@@ -145,7 +145,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
               {/* Collapsed view badge indicator */}
               {isCollapsed && item.badge !== undefined && (
-                <span className="absolute top-2 right-2 w-3 h-3 rounded-full bg-amber-500 ring-2 ring-white" />
+                <span className="absolute top-2 right-2 w-3 h-3 rounded-full bg-[#FFB100] ring-2 ring-white" />
               )}
             </button>
           );
@@ -154,10 +154,10 @@ export const Sidebar: React.FC<SidebarProps> = ({
 
       {/* Quick POS guide widget when not collapsed */}
       {!isCollapsed && (
-        <div className="m-3 p-3 rounded-xl bg-gradient-to-br from-slate-50 to-gray-100 border border-gray-200 text-xs">
-          <div className="flex items-center gap-2 font-bold text-[#1F4461] mb-1">
-            <HelpCircle className="w-4 h-4 text-[#9CC55B]" />
-            <span className="text-xs font-bold">Atajo Rápido</span>
+        <div className="m-3 p-3.5 rounded-2xl bg-gradient-to-br from-red-50/50 via-amber-50/30 to-blue-50/40 border border-gray-200 text-xs">
+          <div className="flex items-center gap-2 font-black text-[#FA2400] mb-1">
+            <HelpCircle className="w-4 h-4 text-[#FFB100]" />
+            <span className="text-xs font-black">Atajo Rápido POS</span>
           </div>
           <p className="text-xs text-gray-600 leading-relaxed font-normal">
             Presiona <strong className="text-gray-900 font-mono font-bold bg-white px-1.5 py-0.5 rounded border border-gray-200">F2</strong> para cobrar y <strong className="text-gray-900 font-mono font-bold bg-white px-1.5 py-0.5 rounded border border-gray-200">F4</strong> para buscar.
@@ -178,4 +178,3 @@ export const Sidebar: React.FC<SidebarProps> = ({
     </aside>
   );
 };
-

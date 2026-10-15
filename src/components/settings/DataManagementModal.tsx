@@ -185,12 +185,13 @@ END $$;`;
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-200">
       <div className="w-full max-w-2xl rounded-2xl bg-white shadow-2xl overflow-hidden border border-gray-100 flex flex-col max-h-[90vh]">
         {/* Modal Header */}
-        <div className="bg-[#1F4461] text-white p-4 flex items-center justify-between">
+        <div className="bg-[#FA2400] text-white p-4 flex items-center justify-between relative overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-1 rainbow-gradient" />
           <div className="flex items-center gap-2">
-            <Database className="w-5 h-5 text-[#9CC55B]" />
+            <Database className="w-5 h-5 text-[#FFF300]" />
             <div>
-              <h3 className="font-bold text-base">Gestión de Datos & Supabase</h3>
-              <p className="text-xs text-gray-300">Borrado de datos de muestra y configuración de nube</p>
+              <h3 className="font-black text-base">Gestión de Datos & Supabase</h3>
+              <p className="text-xs text-white/80">Borrado de datos de muestra y configuración de nube</p>
             </div>
           </div>
           <button

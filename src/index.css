@@ -2,9 +2,13 @@
 
 @layer base {
   :root {
-    --color-primary: #1F4461;
-    --color-secondary: #9CC55B;
-    --color-accent: #F3C16C;
+    --color-primary: #FA2400;
+    --color-orange: #FFB100;
+    --color-yellow: #FFF300;
+    --color-green: #00D700;
+    --color-cyan: #2AB3FE;
+    --color-blue: #008CEB;
+    --color-purple: #9949E8;
     --color-dark: #282829;
   }
 
@@ -21,7 +25,7 @@
 
   body {
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    color: #1e293b;
+    color: #282829;
     background-color: #f8fafc;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
@@ -61,7 +65,7 @@
       margin: 0;
       padding: 12mm 15mm;
       background: white !important;
-      color: #1e293b !important;
+      color: #282829 !important;
       box-shadow: none !important;
       border: none !important;
     }
@@ -90,4 +94,21 @@
 }
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
+}
+
+/* Rainbow border accent animation */
+@keyframes rainbow-shift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.rainbow-gradient {
+  background: linear-gradient(90deg, #FA2400, #FFB100, #FFF300, #00D700, #2AB3FE, #008CEB, #9949E8);
+}
+
+.rainbow-gradient-animated {
+  background: linear-gradient(90deg, #FA2400, #FFB100, #FFF300, #00D700, #2AB3FE, #008CEB, #9949E8, #FA2400);
+  background-size: 200% 200%;
+  animation: rainbow-shift 6s ease infinite;
 }

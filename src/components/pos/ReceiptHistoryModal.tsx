@@ -77,16 +77,17 @@ export const ReceiptHistoryModal: React.FC<ReceiptHistoryModalProps> = ({
       <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-3 sm:p-4 animate-in fade-in duration-150">
         <div className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full overflow-hidden flex flex-col h-[90vh]">
           {/* Header */}
-          <div className="bg-[#1F4461] text-white p-4 sm:p-5 flex items-center justify-between">
+          <div className="bg-[#FA2400] text-white p-4 sm:p-5 flex items-center justify-between relative overflow-hidden">
+            <div className="absolute top-0 left-0 right-0 h-1 rainbow-gradient" />
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center shrink-0">
-                <Receipt className="w-5 h-5 text-[#9CC55B]" />
+              <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
+                <Receipt className="w-5 h-5 text-[#FFF300]" />
               </div>
               <div>
-                <h3 className="font-bold text-base sm:text-lg">
+                <h3 className="font-black text-base sm:text-lg">
                   Historial de Tickets y Devoluciones
                 </h3>
-                <p className="text-xs text-gray-300">
+                <p className="text-xs text-white/80">
                   Reimprime comprobantes o realiza cancelaciones/devoluciones de inventario
                 </p>
               </div>

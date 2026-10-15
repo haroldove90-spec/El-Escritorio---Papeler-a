@@ -31,12 +31,13 @@ export const StoreSettingsModal: React.FC<StoreSettingsModalProps> = ({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in duration-150">
       <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden flex flex-col max-h-[90vh]">
         {/* Header */}
-        <div className="bg-[#1F4461] text-white p-4 flex items-center justify-between">
+        <div className="bg-[#FA2400] text-white p-4 flex items-center justify-between relative overflow-hidden">
+          <div className="absolute top-0 left-0 right-0 h-1 rainbow-gradient" />
           <div className="flex items-center gap-2.5">
-            <Store className="w-5 h-5 text-[#9CC55B]" />
+            <Store className="w-5 h-5 text-[#FFF300]" />
             <div>
-              <h3 className="font-bold text-base">Datos del Negocio y Ticket</h3>
-              <p className="text-[11px] text-gray-300">
+              <h3 className="font-black text-base">Datos del Negocio y Ticket</h3>
+              <p className="text-[11px] text-white/80">
                 Personaliza la información fiscal y cabecera de tus tickets de venta
               </p>
             </div>
@@ -177,7 +178,7 @@ export const StoreSettingsModal: React.FC<StoreSettingsModalProps> = ({
             </button>
             <button
               type="submit"
-              className="flex-1 py-2.5 rounded-xl bg-[#1F4461] hover:bg-[#163248] text-white font-bold text-xs shadow-md transition cursor-pointer flex items-center justify-center gap-1.5"
+              className="flex-1 py-2.5 rounded-xl bg-[#FA2400] hover:bg-[#d81f00] text-white font-black text-xs shadow-md transition cursor-pointer flex items-center justify-center gap-1.5"
             >
               <Save className="w-4 h-4" />
               <span>Guardar Cambios</span>

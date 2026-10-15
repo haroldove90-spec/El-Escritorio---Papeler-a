@@ -68,6 +68,7 @@ import { UserManualModule } from './components/manual/UserManualModule';
 import { DataManagementModal } from './components/settings/DataManagementModal';
 import { StoreSettingsModal } from './components/settings/StoreSettingsModal';
 import { OfflineIndicator } from './components/OfflineIndicator';
+import { SplashScreen } from './components/SplashScreen';
 
 // Web Audio API soft chime for instant sale notification (no external assets required)
 function playSaleChime() {
@@ -907,6 +908,7 @@ export default function App() {
   if (!currentRole) {
     return (
       <>
+        <SplashScreen />
         <RoleSelector
           users={users}
           onLoginSuccess={handleLoginSuccess}
@@ -925,6 +927,8 @@ export default function App() {
   // MAIN APPLICATION LAYOUT (ROLE LOGGED IN)
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-gray-50 text-[#282829]">
+      <SplashScreen />
+
       {/* Unified Institutional Header */}
       <Header
         currentRole={currentRole}
@@ -939,15 +943,17 @@ export default function App() {
 
       {/* Main Workspace: Desktop Sidebar + Active Module Container */}
       <div className="flex flex-1 overflow-hidden relative">
-        {/* Desktop Sidebar Navigation (Role-aware) */}
-        <Sidebar
-          activeModule={activeModule}
-          onSelectModule={handleSelectModule}
-          isCollapsed={isSidebarCollapsed}
-          onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-          lowStockCount={lowStockCount}
-          userRole={currentRole}
-        />
+        {/* Desktop Sidebar Navigation (Role-aware) - Hidden in POS mode for full-screen register */}
+        {activeModule !== 'pos' && (
+          <Sidebar
+            activeModule={activeModule}
+            onSelectModule={handleSelectModule}
+            isCollapsed={isSidebarCollapsed}
+            onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            lowStockCount={lowStockCount}
+            userRole={currentRole}
+          />
+        )}
 
         {/* Dynamic Module Rendering */}
         <main className="flex-1 flex flex-col min-w-0 overflow-hidden relative bg-gray-50">
@@ -962,6 +968,10 @@ export default function App() {
               onOpenShiftModal={() => handleSelectModule('cash')}
               onUpdateProductStock={handleUpdateProductStock}
               onCancelSale={handleCancelSale}
+              onReturnToSystem={() =>
+                handleSelectModule(currentRole === 'Admin' ? 'inventory' : 'cash')
+              }
+              onSelectModule={handleSelectModule}
             />
           )}
 

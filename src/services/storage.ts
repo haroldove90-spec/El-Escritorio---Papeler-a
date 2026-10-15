@@ -502,19 +502,29 @@ export function restoreSampleData(): void {
 
 // Store Configuration & Fiscal Ticket Info
 export const DEFAULT_STORE_CONFIG: StoreConfig = {
-  name: 'Papelería El Escritorio',
-  subtitle: 'Artículos Escolares, Oficina y Copias',
-  rfc: 'EES-260101-9P0',
+  name: 'Papelería Arcoíris',
+  subtitle: 'Artículos Escolares, Oficina, Copias e Impresiones',
+  rfc: 'PAR-260101-7A0',
   address: 'Av. Universidad 405, CDMX',
   phone: '55 1234 5678',
-  ticketFooter: '¡Gracias por su compra!\nConserve este ticket para cualquier aclaración.\nNo hay cambios en hojas sueltas o monografías.',
-  logoUrl: 'https://appdesignproyectos.com/papelerialogo.png',
+  ticketFooter: '¡Gracias por su compra en Papelería Arcoíris!\nConserve este ticket para cualquier aclaración.\nNo hay cambios en hojas sueltas o copias.',
+  logoUrl: 'https://lgaocnmbdzakianuvzlf.supabase.co/storage/v1/object/public/logos/ibetzilogo.png',
 };
 
 export function getStoreConfig(): StoreConfig {
   try {
     const raw = localStorage.getItem('papeleria_store_config');
-    if (raw) return { ...DEFAULT_STORE_CONFIG, ...JSON.parse(raw) };
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      // Migrate old logo/name to Papelería Arcoíris
+      if (parsed.logoUrl && parsed.logoUrl.includes('papelerialogo.png')) {
+        parsed.logoUrl = 'https://lgaocnmbdzakianuvzlf.supabase.co/storage/v1/object/public/logos/ibetzilogo.png';
+      }
+      if (parsed.name && parsed.name.includes('Escritorio')) {
+        parsed.name = 'Papelería Arcoíris';
+      }
+      return { ...DEFAULT_STORE_CONFIG, ...parsed };
+    }
   } catch {}
   return DEFAULT_STORE_CONFIG;
 }
